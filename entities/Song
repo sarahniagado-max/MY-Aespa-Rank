@@ -1,0 +1,92 @@
+{
+  "name": "Song",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Song title"
+    },
+    "album": {
+      "type": "string",
+      "description": "Album or single name"
+    },
+    "release_date": {
+      "type": "string",
+      "description": "Release date (YYYY-MM-DD)"
+    },
+    "cover_url": {
+      "type": "string",
+      "description": "Album cover image URL"
+    },
+    "song_type": {
+      "type": "string",
+      "enum": [
+        "title_track",
+        "b_side",
+        "single",
+        "ost",
+        "collaboration",
+        "pre_release",
+        "solo"
+      ],
+      "description": "Type of song"
+    },
+    "track_number": {
+      "type": "number",
+      "description": "Track number within the album for ordering"
+    },
+    "youtube_url": {
+      "type": "string",
+      "description": "YouTube URL for audio preview (e.g. https://youtube.com/watch?v=...)"
+    },
+    "preview_start": {
+      "type": "number",
+      "description": "Preview start time in seconds"
+    },
+    "preview_end": {
+      "type": "number",
+      "description": "Preview end time in seconds"
+    },
+    "is_japanese": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a Japanese release"
+    },
+    "featured_member": {
+      "type": "string",
+      "enum": [
+        "Karina",
+        "Winter",
+        "Giselle",
+        "Ningning"
+      ],
+      "description": "Featured/solo member"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free text notes or extra info"
+    },
+    "collab_artist": {
+      "type": "string",
+      "description": "Collaborating artist name"
+    },
+    "ost_source": {
+      "type": "string",
+      "description": "Movie / show / game the OST is from"
+    },
+    "lyrics_language": {
+      "type": "string",
+      "enum": [
+        "Korean",
+        "Japanese",
+        "English",
+        "Mixed"
+      ],
+      "description": "Primary language of the lyrics"
+    }
+  },
+  "required": [
+    "title",
+    "album"
+  ]
+}

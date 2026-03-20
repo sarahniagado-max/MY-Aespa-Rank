@@ -1,0 +1,21 @@
+{
+  "name": "UserPersonalData",
+  "type": "object",
+  "properties": {
+    "song_title": {
+      "type": "string",
+      "description": "Title of the song this data belongs to"
+    },
+    "personal_score": {
+      "type": "number",
+      "description": "User's personal score 1-10 for this song"
+    },
+    "personal_notes": {
+      "type": "string",
+      "description": "User's personal notes about this song"
+    }
+  },
+  "required": [
+    "song_title"
+  ]
+}

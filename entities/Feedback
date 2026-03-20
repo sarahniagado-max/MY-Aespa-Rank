@@ -1,0 +1,23 @@
+{
+  "name": "Feedback",
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "screenshot_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Screenshot image URL"
+    }
+  },
+  "required": [
+    "message"
+  ]
+}

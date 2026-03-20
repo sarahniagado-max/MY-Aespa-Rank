@@ -1,0 +1,61 @@
+{
+  "name": "MoodRanking",
+  "type": "object",
+  "properties": {
+    "mood_id": {
+      "type": "string",
+      "description": "Mood ID this ranking is for"
+    },
+    "mood_name": {
+      "type": "string",
+      "description": "Mood name at time of save"
+    },
+    "mood_color": {
+      "type": "string",
+      "description": "Mood color at time of save"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "User email who owns this ranking"
+    },
+    "elo_ratings": {
+      "type": "string",
+      "description": "JSON string of song_id -> elo_score map"
+    },
+    "battles_completed": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of battles completed for this mood"
+    },
+    "phase": {
+      "type": "number",
+      "default": 1,
+      "description": "Current phase: 1 = discovery, 2 = finals"
+    },
+    "phase1_seen_songs": {
+      "type": "string",
+      "description": "JSON string array of song IDs seen in Phase 1"
+    },
+    "phase1_winners": {
+      "type": "string",
+      "description": "JSON string array of song IDs that won at least one Phase 1 battle"
+    },
+    "is_complete": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether Phase 2 has been completed and this is an archived ranking"
+    },
+    "phase1_eliminated": {
+      "type": "string",
+      "description": "JSON string array of song IDs eliminated in Phase 1 (None of These)"
+    },
+    "completed_at": {
+      "type": "string",
+      "description": "ISO date string when Phase 2 was completed"
+    }
+  },
+  "required": [
+    "mood_id",
+    "user_id"
+  ]
+}

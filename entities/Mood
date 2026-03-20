@@ -1,0 +1,28 @@
+{
+  "name": "Mood",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Mood name"
+    },
+    "color": {
+      "type": "string",
+      "description": "Hex color code for mood"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "User email who owns this mood (system user for defaults)"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a default mood"
+    }
+  },
+  "required": [
+    "name",
+    "color",
+    "user_id"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "name": "Album",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Album name"
+    },
+    "cover_url": {
+      "type": "string",
+      "description": "Album cover image URL"
+    },
+    "release_date": {
+      "type": "string",
+      "description": "Release date (YYYY-MM-DD)"
+    },
+    "album_type": {
+      "type": "string",
+      "enum": [
+        "mini",
+        "full",
+        "single",
+        "japanese",
+        "special_single",
+        "collaboration",
+        "ost"
+      ],
+      "description": "Type of album"
+    },
+    "album_number": {
+      "type": "string",
+      "description": "e.g. '1st Mini Album', '2nd Mini Album'"
+    },
+    "description": {
+      "type": "string",
+      "description": "Free text notes about the album"
+    },
+    "lightstick_color": {
+      "type": "string",
+      "description": "Hex color code for the era lightstick"
+    },
+    "song_count": {
+      "type": "number",
+      "description": "Number of songs belonging to this album (auto-calculated)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

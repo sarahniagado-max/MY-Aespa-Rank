@@ -1,0 +1,49 @@
+{
+  "name": "Battle",
+  "type": "object",
+  "properties": {
+    "song_a_id": {
+      "type": "string",
+      "description": "ID of first song in battle"
+    },
+    "song_b_id": {
+      "type": "string",
+      "description": "ID of second song in battle"
+    },
+    "winner_id": {
+      "type": "string",
+      "description": "ID of winning song (null if skip/draw)"
+    },
+    "loser_id": {
+      "type": "string",
+      "description": "ID of losing song (null if skip/draw)"
+    },
+    "decision_time_seconds": {
+      "type": "number",
+      "description": "Time taken to make decision in seconds (decimal)"
+    },
+    "battle_type": {
+      "type": "string",
+      "enum": [
+        "main",
+        "mood"
+      ],
+      "description": "Type of battle"
+    },
+    "mood_id": {
+      "type": "string",
+      "description": "Mood ID if battle_type is mood (optional)"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "User email who participated in battle"
+    }
+  },
+  "required": [
+    "song_a_id",
+    "song_b_id",
+    "decision_time_seconds",
+    "battle_type",
+    "user_id"
+  ]
+}

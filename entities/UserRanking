@@ -1,0 +1,29 @@
+{
+  "name": "UserRanking",
+  "type": "object",
+  "properties": {
+    "elo_ratings": {
+      "type": "string",
+      "description": "JSON string of song_id -> elo_rating map"
+    },
+    "battles_completed": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of battles completed"
+    },
+    "is_complete": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether ranking is complete"
+    },
+    "pending_pairs": {
+      "type": "string",
+      "description": "JSON string of remaining battle pairs"
+    },
+    "album_filter": {
+      "type": "string",
+      "description": "Current album filter, empty means all"
+    }
+  },
+  "required": []
+}
