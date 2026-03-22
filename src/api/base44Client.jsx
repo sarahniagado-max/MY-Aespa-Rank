@@ -1,56 +1,107 @@
-import { createClient } from '@supabase/supabase-js';
+const supabaseUrl = 'https://pgeobkizrwysefxehves.supabase.co';
+const supabaseKey =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnZW9ia2l6cnd5c2VmeGVodmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MjkwMDEsImV4cCI6MjA4OTUwNTAwMX0.zVZpftZ2ifyFcC73yT6aYS4ZdpzpKyzgrLWCUVytV-Q';
 
-const SUPABASE_URL = 'https://pgeobkizrwysefxehves.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnZW9ia2l6cnd5c2VmeGVodmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MjkwMDEsImV4cCI6MjA4OTUwNTAwMX0.zVZpftZ2ifyFcC73yT6aYS4ZdpzpKyzgrLWCUVytV-Q';
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const TABLE_MAP = {
-  Song: 'songs', Album: 'albums', UserRanking: 'user_rankings',
-  Battle: 'battles', SongTag: 'song_tags', Mood: 'moods',
-  MoodRanking: 'mood_rankings', UserPersonalData: 'user_personal_data',
-  Feedback: 'feedback', User: 'users',
-};
+async function query(table, options = {}) {
+  const { method = 'GET', filter, orderBy, limit = 1000, body } = options;
+  let url = `${supabaseUrl}/rest/v1/${table}?`;
+  if (orderBy) url += `order=${orderBy}.asc&`;
+  if (limit) url += `limit=${limit}&`;
+  if (filter)
+    Object.entries(filter).forEach(([k, v]) => {
+      url += `${k}=eq.${v}&`;
+    });
+  const headers = {
+    apikey: supabaseKey,
+    Authorization: `Bearer ${supabaseKey}`,
+    'Content-Type': 'application/json',
+    Prefer:
+      method === 'POST' ? 'return=representation' : 'return=representation',
+  };
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    console.error(`Supabase error on ${table}:`, await res.text());
+    return method === 'GET' ? [] : null;
+  }
+  return res.json();
+}
 
 function createEntity(tableName) {
   return {
     async list(orderBy = 'created_at', limit = 1000) {
-      const { data, error } = await supabase.from(tableName).select('*').order(orderBy, { ascending: true }).limit(limit);
-      if (error) { console.error(`Error listing ${tableName}:`, error); return []; }
-      return data || [];
+      return query(tableName, { orderBy, limit }) || [];
     },
     async filter(filters = {}, orderBy = 'created_at', limit = 1000) {
-      let query = supabase.from(tableName).select('*');
-      Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== null) query = query.eq(key, value); });
-      const { data, error } = await query.order(orderBy, { ascending: true }).limit(limit);
-      if (error) { console.error(`Error filtering ${tableName}:`, error); return []; }
-      return data || [];
+      return query(tableName, { filter: filters, orderBy, limit }) || [];
     },
     async get(id) {
-      const { data, error } = await supabase.from(tableName).select('*').eq('id', id).single();
-      if (error) { console.error(`Error getting ${tableName}:`, error); return null; }
-      return data;
+      const r = await query(`${tableName}?id=eq.${id}`);
+      return r?.[0] || null;
     },
     async create(fields) {
-      const { data, error } = await supabase.from(tableName).insert([fields]).select().single();
-      if (error) { console.error(`Error creating ${tableName}:`, error); throw error; }
-      return data;
+      return query(tableName, { method: 'POST', body: fields });
     },
     async update(id, fields) {
-      const { data, error } = await supabase.from(tableName).update(fields).eq('id', id).select().single();
-      if (error) { console.error(`Error updating ${tableName}:`, error); throw error; }
-      return data;
+      return query(`${tableName}?id=eq.${id}`, {
+        method: 'PATCH',
+        body: fields,
+      });
     },
     async delete(id) {
-      const { error } = await supabase.from(tableName).delete().eq('id', id);
-      if (error) { console.error(`Error deleting ${tableName}:`, error); throw error; }
+      await query(`${tableName}?id=eq.${id}`, { method: 'DELETE' });
       return { success: true };
     },
   };
 }
 
 const entities = {};
-Object.entries(TABLE_MAP).forEach(([entityName, tableName]) => { entities[entityName] = createEntity(tableName); });
+[
+  'Song',
+  'Album',
+  'UserRanking',
+  'Battle',
+  'SongTag',
+  'Mood',
+  'MoodRanking',
+  'UserPersonalData',
+  'Feedback',
+  'User',
+].forEach((name) => {
+  const tableMap = {
+    Song: 'songs',
+    Album: 'albums',
+    UserRanking: 'user_rankings',
+    Battle: 'battles',
+    SongTag: 'song_tags',
+    Mood: 'moods',
+    MoodRanking: 'mood_rankings',
+    UserPersonalData: 'user_personal_data',
+    Feedback: 'feedback',
+    User: 'users',
+  };
+  entities[name] = createEntity(tableMap[name]);
+});
 
-const auth = { async isAuthenticated() { return false; }, async me() { return null; } };
-const integrations = { Core: { async Upload
+const auth = {
+  async isAuthenticated() {
+    return false;
+  },
+  async me() {
+    return null;
+  },
+};
+const integrations = {
+  Core: {
+    async UploadFile() {
+      return { file_url: '' };
+    },
+  },
+};
+
+export const db = { auth, entities, integrations };
+export const base44 = db;
+export default db;
