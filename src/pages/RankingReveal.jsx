@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Crown, SkipForward } from "lucide-react";
 import { stopAllPreviews } from "../components/ranking/SongPreviewPlayer";
@@ -360,7 +361,7 @@ export default function RankingReveal() {
         setDone(true);
         setVisible(false);
         stopAudio();
-        setTimeout(() => navigate(-1), 1200);
+        setTimeout(() => navigate(createPageUrl("Results")), 1200);
         return;
       }
 
@@ -415,7 +416,7 @@ export default function RankingReveal() {
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     stopAudio();
     doneRef.current = true;
-    navigate(-1);
+    navigate(createPageUrl("Results"));
   }, [stopAudio, navigate]);
 
   // Cleanup on unmount
