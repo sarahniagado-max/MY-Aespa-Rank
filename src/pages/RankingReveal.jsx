@@ -403,6 +403,13 @@ export default function RankingReveal() {
     }, 100);
   }, [playAudio, scheduleNext]);
 
+  // Auto-start as soon as the sequence is ready
+  useEffect(() => {
+    if (sequence.length > 0 && !started) {
+      handleStart();
+    }
+  }, [sequence, handleStart, started]);
+
   const handleSkip = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
@@ -459,30 +466,6 @@ export default function RankingReveal() {
         </button>
       )}
 
-      {/* Intro screen */}
-      {!started && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="fixed inset-0 flex flex-col items-center justify-center px-8 text-center z-30"
-        >
-          <Crown className="w-12 h-12 text-violet-400/50 mb-6" />
-          <p className="text-white font-black text-3xl mb-3">
-            Ready for the<br />
-            <span className="aurora-text-rv">Dramatic Reveal?</span>
-          </p>
-          <p className="text-white/30 text-sm mb-10">
-            {rankingData.rankings.length > 10 ? "Top 10" : "Top 5"} · {rankingData.rankings.length} songs ranked
-          </p>
-          <button
-            onClick={handleStart}
-            className="px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-white transition-all shadow-lg"
-            style={{ background: "linear-gradient(135deg, #a78bfa, #67e8f9, #f0abfc, #34d399)", backgroundSize: "300% 300%", animation: "aurora-shift-rv 3s ease infinite" }}
-          >
-            Begin Reveal
-          </button>
-        </motion.div>
-      )}
 
       {/* Song slides */}
       {started && currentStep && (
