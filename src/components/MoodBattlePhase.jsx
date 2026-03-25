@@ -142,6 +142,11 @@ export default function MoodBattlePhase({
   // Battle history for undo
   const [history, setHistory] = useState([]);
 
+  const phase2Songs = currentPhase === 2
+    ? [...winnerIds].map(id => songs.find(s => s.id === id)).filter(Boolean)
+    : [];
+  const battleSongs = currentPhase === 1 ? songs : phase2Songs;
+
   // Last battle detection
   const isLastBattle = (() => {
     if (currentPhase === 1) {
@@ -194,11 +199,6 @@ export default function MoodBattlePhase({
 
   const initEliminatedIds = parseJson(rankingData?.phase1_eliminated, []);
   const [eliminatedIds, setEliminatedIds] = useState(new Set(initEliminatedIds));
-
-  const phase2Songs = currentPhase === 2
-    ? [...winnerIds].map(id => songs.find(s => s.id === id)).filter(Boolean)
-    : [];
-  const battleSongs = currentPhase === 1 ? songs : phase2Songs;
 
   const saveState = (newElo, newSeen, newWinners, newBattles, newEliminated) => {
     const elim = newEliminated !== undefined ? newEliminated : eliminatedIds;

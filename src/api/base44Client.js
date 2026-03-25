@@ -39,20 +39,21 @@ function createEntity(tableName) {
       return query(tableName, { filter: filters, orderBy, limit }) || [];
     },
     async get(id) {
-      const r = await query(`${tableName}?id=eq.${id}`);
+      const r = await query(tableName, { filter: { id } });
       return r?.[0] || null;
     },
     async create(fields) {
       return query(tableName, { method: 'POST', body: fields });
     },
     async update(id, fields) {
-      return query(`${tableName}?id=eq.${id}`, {
+      return query(tableName, {
         method: 'PATCH',
+        filter: { id },
         body: fields,
       });
     },
     async delete(id) {
-      await query(`${tableName}?id=eq.${id}`, { method: 'DELETE' });
+      await query(tableName, { method: 'DELETE', filter: { id } });
       return { success: true };
     },
   };
