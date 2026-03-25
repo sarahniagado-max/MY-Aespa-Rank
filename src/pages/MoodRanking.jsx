@@ -1,4 +1,4 @@
-const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
+import db from "../api/base44Client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
@@ -97,7 +97,11 @@ export default function MoodRanking() {
   const activeRankings = dbRankings.filter(r => !r.is_complete);
   const savedRankings = dbRankings.filter(r => r.is_complete);
 
-  const getRanking = (moodId) => activeRankings.find(r => r.mood_id === moodId);
+  const getRanking = (moodId) => {
+    const matches = activeRankings.filter(r => r.mood_id === moodId);
+    if (matches.length === 0) return undefined;
+    return matches.reduce((best, r) => ((r.phase || 1) > (best.phase || 1) ? r : best));
+  };
 
   const handleSave = useCallback(async (moodId, updates) => {
     if (!userEmail) return;
@@ -111,7 +115,8 @@ export default function MoodRanking() {
 
   const handlePhase1Complete = useCallback(async (winnerIds) => {
     if (!userEmail || !activeMoodId) return;
-    const existing = getRanking(activeMoodId);
+    const fresh = await db.entities.MoodRanking.filter({ mood_id: activeMoodId, user_id: userEmail });
+    const existing = fresh.find(r => !r.is_complete) || fresh[0];
     const updates = { phase: 2, phase1_winners: JSON.stringify(winnerIds) };
     if (existing) {
       await updateRankingMutation.mutateAsync({ id: existing.id, data: updates });
@@ -119,7 +124,7 @@ export default function MoodRanking() {
       await createRankingMutation.mutateAsync({ mood_id: activeMoodId, user_id: userEmail, ...updates });
     }
     queryClient.invalidateQueries({ queryKey: ["moodRankings", userEmail] });
-  }, [userEmail, activeMoodId, activeRankings]);
+  }, [userEmail, activeMoodId]);
 
   const handlePhase2Complete = useCallback(async (finalElo) => {
     const existing = getRanking(activeMoodId);

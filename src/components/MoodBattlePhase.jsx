@@ -103,20 +103,14 @@ export default function MoodBattlePhase({
 
   const getEloVal = (id, eloMap) => eloMap[id] ?? 1400;
 
-  // Phase 2 songs = phase1_winners mapped to actual song objects
-  const phase2Songs = phase === 2
-    ? initWinnerIds.map(id => songs.find(s => s.id === id)).filter(Boolean)
-    : [];
-
-  const battleSongs = phase === 1 ? songs : phase2Songs;
-
   // Pick a pair from pool, preferring unseen in phase 1
   const pickPair = useCallback((pool) => {
-    if (!pool || pool.length < 2) return (battleSongs || []).slice(0, 2);
+    if (!pool || pool.length < 2) return songs.slice(0, 2);
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     return [shuffled[0], shuffled[1]];
-  }, [battleSongs]);
+  }, [songs]);
 
+  const [currentPhase, setCurrentPhase] = useState(phase);
   const [elo, setElo] = useState(initElo);
   const [seenIds, setSeenIds] = useState(new Set(initSeenIds));
   const [winnerIds, setWinnerIds] = useState(new Set(initWinnerIds));
@@ -129,7 +123,9 @@ export default function MoodBattlePhase({
       const shuffled = [...unseen].sort(() => Math.random() - 0.5);
       return [shuffled[0], shuffled[1]];
     }
-    const pool = phase === 2 ? phase2Songs : songs;
+    const pool = phase === 2
+      ? initWinnerIds.map(id => songs.find(s => s.id === id)).filter(Boolean)
+      : songs;
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     return [shuffled[0], shuffled[1]];
   });
@@ -148,12 +144,12 @@ export default function MoodBattlePhase({
 
   // Last battle detection
   const isLastBattle = (() => {
-    if (phase === 1) {
+    if (currentPhase === 1) {
       const unseenNotInPair = songs.filter(s => !seenIds.has(s.id) && !pair.some(p => p?.id === s.id));
       return unseenNotInPair.length === 0 && pair.some(s => !seenIds.has(s.id));
     }
     // Phase 2: last battle is when battles_completed + 1 >= threshold
-    if (phase === 2) {
+    if (currentPhase === 2) {
       const minBattlesNeeded = phase2Songs.length * 2;
       return battlesCompleted + 1 >= minBattlesNeeded;
     }
@@ -162,7 +158,7 @@ export default function MoodBattlePhase({
 
   // On mount: if phase 1 and all songs already seen, immediately show completion
   useEffect(() => {
-    if (phase === 1) {
+    if (currentPhase === 1) {
       const allSeen = songs.every(s => initSeenIds.includes(s.id));
       if (allSeen) setPhase1DoneModal(true);
     }
@@ -181,7 +177,7 @@ export default function MoodBattlePhase({
   }, [isLastBattle]);
 
   const nextPairAfter = (newSeen) => {
-    if (phase === 1) {
+    if (currentPhase === 1) {
       const unseen = songs.filter(s => !newSeen.has(s.id));
       // Odd number: 1 unseen left → lone wolf screen
       if (unseen.length === 1) return { lone: unseen[0] };
@@ -199,6 +195,11 @@ export default function MoodBattlePhase({
   const initEliminatedIds = parseJson(rankingData?.phase1_eliminated, []);
   const [eliminatedIds, setEliminatedIds] = useState(new Set(initEliminatedIds));
 
+  const phase2Songs = currentPhase === 2
+    ? [...winnerIds].map(id => songs.find(s => s.id === id)).filter(Boolean)
+    : [];
+  const battleSongs = currentPhase === 1 ? songs : phase2Songs;
+
   const saveState = (newElo, newSeen, newWinners, newBattles, newEliminated) => {
     const elim = newEliminated !== undefined ? newEliminated : eliminatedIds;
     onSave({
@@ -207,7 +208,7 @@ export default function MoodBattlePhase({
       phase1_winners: JSON.stringify([...newWinners]),
       phase1_eliminated: JSON.stringify([...elim]),
       battles_completed: newBattles,
-      phase: phase,
+      phase: currentPhase,
     });
   };
 
@@ -219,7 +220,7 @@ export default function MoodBattlePhase({
     saveState(newElo, newSeen, newWinners, newBattles, newEliminated);
 
     // Phase 1 completion
-    if (phase === 1) {
+    if (currentPhase === 1) {
       const allSeen = songs.every(s => newSeen.has(s.id));
       if (allSeen) {
         setTimeout(() => { setIsAnimating(false); setPhase1DoneModal(true); }, 300);
@@ -236,7 +237,7 @@ export default function MoodBattlePhase({
     }
 
     // Phase 2 completion
-    if (phase === 2 && phase2Songs.length > 0) {
+    if (currentPhase === 2 && phase2Songs.length > 0) {
       const minBattlesNeeded = phase2Songs.length * 2;
       if (newBattles >= minBattlesNeeded) {
         setTimeout(() => { setIsAnimating(false); onPhase2Complete(newElo); }, 300);
@@ -263,7 +264,7 @@ export default function MoodBattlePhase({
     const newElo = { ...elo, [winner.id]: result.winner, [loser.id]: result.loser };
     const newSeen = new Set(seenIds); newSeen.add(winner.id); newSeen.add(loser.id);
     const newWinners = new Set(winnerIds);
-    if (phase === 1) newWinners.add(winner.id);
+    if (currentPhase === 1) newWinners.add(winner.id);
     const newBattles = battlesCompleted + 1;
 
     setHistory(prev => [...prev, { elo: { ...elo }, seenIds: new Set(seenIds), winnerIds: new Set(winnerIds), pair, battlesCompleted, battleResults: getBattleResults() }]);
@@ -282,7 +283,7 @@ export default function MoodBattlePhase({
     const newElo = { ...elo, [a.id]: result.a, [b.id]: result.b };
     const newSeen = new Set(seenIds); newSeen.add(a.id); newSeen.add(b.id);
     const newWinners = new Set(winnerIds);
-    if (phase === 1) { newWinners.add(a.id); newWinners.add(b.id); }
+    if (currentPhase === 1) { newWinners.add(a.id); newWinners.add(b.id); }
     const newBattles = battlesCompleted + 1;
 
     setHistory(prev => [...prev, { elo: { ...elo }, seenIds: new Set(seenIds), winnerIds: new Set(winnerIds), pair, battlesCompleted, battleResults: getBattleResults() }]);
@@ -290,7 +291,7 @@ export default function MoodBattlePhase({
   };
 
   const handleNoneOfThese = () => {
-    if (isAnimating || phase !== 1) return;
+    if (isAnimating || currentPhase !== 1) return;
     setIsAnimating(true);
     stopAllPreviews();
 
@@ -399,7 +400,7 @@ export default function MoodBattlePhase({
         </button>
         <div className="flex-1 text-center">
           <span className="text-xs font-bold uppercase tracking-widest" style={{ color: moodColor }}>
-            {mood.name} — Phase {phase}
+            {mood.name} — Phase {currentPhase}
           </span>
         </div>
         <button
@@ -412,7 +413,7 @@ export default function MoodBattlePhase({
       </div>
 
       {/* Progress bar */}
-      {phase === 1 && (
+      {currentPhase === 1 && (
         <div className="px-4 pb-2">
           <div className="flex items-center justify-end mb-1">
             <span className="text-white/40 text-[9px] font-mono">{totalSongs - unseenCount} / {totalSongs}</span>
@@ -428,7 +429,7 @@ export default function MoodBattlePhase({
         </div>
       )}
 
-      {phase === 2 && (
+      {currentPhase === 2 && (
         <div className="px-4 pb-2">
           <div className="flex items-center justify-between mb-1">
             <span className="text-white/30 text-[9px] uppercase tracking-widest">Phase 2 — {phase2Songs.length} songs</span>
@@ -447,7 +448,7 @@ export default function MoodBattlePhase({
 
       <div className="flex items-center justify-center mb-2 px-4">
         <span className="text-white/40 text-[10px] font-bold uppercase tracking-[0.3em]">
-          {phase === 2 ? "Which do you prefer?" : `Which fits "${mood.name}" better?`}
+          {currentPhase === 2 ? "Which do you prefer?" : `Which fits "${mood.name}" better?`}
         </span>
       </div>
 
@@ -610,7 +611,7 @@ export default function MoodBattlePhase({
               </AuroraPill>
 
               {/* Middle: None of These (Phase 1) or VS badge (Phase 2) */}
-              {phase === 1 ? (
+              {currentPhase === 1 ? (
                 <HoldButton
                   onConfirm={handleNoneOfThese}
                   disabled={isAnimating}
@@ -706,7 +707,19 @@ export default function MoodBattlePhase({
               {/* Start Phase 2 at VERY BOTTOM, below all song lists */}
               <div className="mt-4 space-y-2">
                 <button
-                  onClick={() => { setPhase1DoneModal(false); onPhase1Complete([...winnerIds]); }}
+                  onClick={() => {
+                    onPhase1Complete([...winnerIds]);
+                    const p2 = [...winnerIds].map(id => songs.find(s => s.id === id)).filter(Boolean);
+                    const shuffled = [...p2].sort(() => Math.random() - 0.5);
+                    setPair([shuffled[0], shuffled[1]]);
+                    setBattlesCompleted(0);
+                    setHistory([]);
+                    lastBattleShownRef.current = false;
+                    battleStart.current = Date.now();
+                    setBattleKey(k => k + 1);
+                    setCurrentPhase(2);
+                    setPhase1DoneModal(false);
+                  }}
                   className="aurora-confirm-btn w-full py-4 rounded-2xl text-sm uppercase tracking-widest"
                 >
                   Start Phase 2 →
@@ -738,7 +751,7 @@ export default function MoodBattlePhase({
               onClick={e => e.stopPropagation()}
             >
               <p className="text-white font-bold text-sm">Reset Progress?</p>
-              {phase === 2 ? (
+              {currentPhase === 2 ? (
                 <div className="space-y-2">
                   <button
                     onClick={() => { setShowResetConfirm(false); onResetPhase2?.(); }}
@@ -777,7 +790,7 @@ export default function MoodBattlePhase({
                   </div>
                 </>
               )}
-              {phase === 2 && (
+              {currentPhase === 2 && (
                 <button onClick={() => setShowResetConfirm(false)} className="w-full py-2 text-white/30 text-xs hover:text-white/60">
                   Cancel
                 </button>
