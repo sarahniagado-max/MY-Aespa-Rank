@@ -103,31 +103,9 @@ function AlbumForm({ initial, onSave, onClose, loading }) {
   );
 }
 
-const ADMIN_EMAIL = "sarahniagado@gmail.com";
-
 export default function Albums() {
   const qc = useQueryClient();
-  // Admin check
-  const [user, setUser] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  useEffect(() => {
-    const check = async () => {
-      try {
-        const isAuth = await db.auth.isAuthenticated();
-        if (!isAuth) {
-          db.auth.redirectToLogin();
-          return;
-        }
-        const u = await db.auth.me();
-        setUser(u);
-      } catch (e) {
-        db.auth.redirectToLogin();
-      } finally {
-        setAuthChecked(true);
-      }
-    };
-    check();
-  }, []);
+  const isAdmin = localStorage.getItem("aespa_admin") === "1";
   const { data: albums = [], isLoading } = useQuery({
     queryKey: ['albums'],
     queryFn: () => db.entities.Album.list('release_date', 200),
@@ -170,12 +148,7 @@ export default function Albums() {
     return m;
   }, [allSongs]);
 
-  if (!authChecked) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-    </div>
-  );
-  if (user?.email !== ADMIN_EMAIL) return (
+  if (!isAdmin) return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
       <ShieldOff className="w-10 h-10 text-white/20" />
       <p className="text-white/40 text-sm">Admin access only</p>

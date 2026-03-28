@@ -12,7 +12,6 @@ import CoverImg from "../components/ranking/CoverImg";
 import TimeInput from "../components/ranking/TimeInput";
 
 const INPUT = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-violet-500/50 transition-colors";
-const ADMIN_EMAIL = "sarahniagado@gmail.com";
 
 function Field({ label, children }) {
   return (
@@ -148,12 +147,7 @@ function SongEditModal({ song, onClose, onSave, loading, allSongs, dbAlbums = []
 
 export default function AdminSongs() {
   const qc = useQueryClient();
-  const [user, setUser] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
-
-  useEffect(() => {
-    db.auth.me().then(u => { setUser(u); setAuthChecked(true); }).catch(() => setAuthChecked(true));
-  }, []);
+  const isAdmin = localStorage.getItem("aespa_admin") === "1";
 
   const { data: allSongs = [], isLoading } = useQuery({
     queryKey: ['songs'],
@@ -179,13 +173,7 @@ export default function AdminSongs() {
     onSuccess: () => { qc.invalidateQueries(['songs']); setEditing(null); },
   });
 
-  if (!authChecked) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-    </div>
-  );
-
-  if (user?.email !== ADMIN_EMAIL) return (
+  if (!isAdmin) return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
       <ShieldOff className="w-10 h-10 text-white/20" />
       <p className="text-white/40 text-sm">Admin access only</p>

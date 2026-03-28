@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { Swords, Trophy, List, BookMarked, ImageIcon, RotateCcw, Award, Zap, Star, ChevronDown, HelpCircle, Settings, MessageSquare, Disc3, BarChart3, Sparkles, Heart, Smile } from "lucide-react";
+import { Swords, Trophy, List, BookMarked, ImageIcon, RotateCcw, Award, Zap, Star, ChevronDown, HelpCircle, Settings, MessageSquare, Disc3, BarChart3, Sparkles, Heart, Smile, Lock, LockOpen } from "lucide-react";
 import { useTheme } from "../components/useTheme";
 import { useSongs } from "../components/ranking/useSongs";
 import AppTutorial, { shouldShowTutorial } from "../components/tutorial/AppTutorial";
@@ -101,8 +101,6 @@ function HowItWorks() {
 const DEFAULT_BG = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/699f6cf843d0d1d18973a726/beaac3f5a_Image137.jpg";
 const BG_KEY = "aespa_home_bg";
 
-const ADMIN_EMAIL = "sarahniagado@gmail.com";
-
 export default function Home() {
   const { songs: allSongsDb, albums: allAlbumsDb } = useSongs();
   const { theme, toggle: toggleTheme } = useTheme();
@@ -111,6 +109,10 @@ export default function Home() {
   const [bgUrl, setBgUrl] = useState(() => localStorage.getItem(BG_KEY) || DEFAULT_BG);
   const [showTutorial, setShowTutorial] = useState(false);
   const fileRef = useRef(null);
+  const [adminUnlocked, setAdminUnlocked] = useState(() => localStorage.getItem("aespa_admin") === "1");
+  const [showAdminPopup, setShowAdminPopup] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminError, setAdminError] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -157,6 +159,18 @@ export default function Home() {
   const resetBg = () => {
     setBgUrl(DEFAULT_BG);
     localStorage.removeItem(BG_KEY);
+  };
+
+  const handleAdminUnlock = () => {
+    if (adminPassword === "DEBE21") {
+      localStorage.setItem("aespa_admin", "1");
+      setAdminUnlocked(true);
+      setShowAdminPopup(false);
+      setAdminPassword("");
+      setAdminError(false);
+    } else {
+      setAdminError(true);
+    }
   };
 
   return (
@@ -335,14 +349,23 @@ export default function Home() {
             Settings & Help
           </Link>
 
-          {userEmail === ADMIN_EMAIL && (
-            <Link
-              to={createPageUrl("Albums")}
-              className="flex items-center justify-center gap-3 w-full py-3.5 rounded-2xl border border-white/10 bg-transparent hover:bg-white/5 text-white/35 hover:text-white/65 font-semibold text-sm uppercase tracking-widest transition-all duration-300"
-            >
-              <Disc3 className="w-4 h-4" />
-              Album Management (Admin Only)
-            </Link>
+          {adminUnlocked && (
+            <>
+              <Link
+                to={createPageUrl("Albums")}
+                className="flex items-center justify-center gap-3 w-full py-3.5 rounded-2xl border border-white/10 bg-transparent hover:bg-white/5 text-white/35 hover:text-white/65 font-semibold text-sm uppercase tracking-widest transition-all duration-300"
+              >
+                <Disc3 className="w-4 h-4" />
+                Album Management
+              </Link>
+              <Link
+                to={createPageUrl("AdminSongs")}
+                className="flex items-center justify-center gap-3 w-full py-3.5 rounded-2xl border border-white/10 bg-transparent hover:bg-white/5 text-white/35 hover:text-white/65 font-semibold text-sm uppercase tracking-widest transition-all duration-300"
+              >
+                <Settings className="w-4 h-4" />
+                Song Management
+              </Link>
+            </>
           )}
 
           <Link
@@ -392,6 +415,70 @@ export default function Home() {
           </motion.div>
         )}
       </motion.div>
+
+      {/* Admin lock button — discreet, fixed bottom-right */}
+      <button
+        onClick={() => {
+          if (adminUnlocked) {
+            localStorage.removeItem("aespa_admin");
+            setAdminUnlocked(false);
+          } else {
+            setShowAdminPopup(true);
+            setAdminPassword("");
+            setAdminError(false);
+          }
+        }}
+        className="fixed bottom-5 right-5 p-2 text-white/10 hover:text-white/30 transition-colors z-50"
+        aria-label={adminUnlocked ? "Lock admin" : "Admin unlock"}
+      >
+        {adminUnlocked ? <LockOpen className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+      </button>
+
+      {/* Admin password popup */}
+      <AnimatePresence>
+        {showAdminPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowAdminPopup(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-72 flex flex-col gap-4"
+            >
+              <p className="text-white/70 text-sm font-semibold text-center">Admin Access</p>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => { setAdminPassword(e.target.value); setAdminError(false); }}
+                onKeyDown={(e) => e.key === "Enter" && handleAdminUnlock()}
+                placeholder="Password"
+                autoFocus
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-white/30"
+              />
+              {adminError && <p className="text-red-400 text-xs text-center">Incorrect password</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAdminPopup(false)}
+                  className="flex-1 py-2 rounded-lg border border-white/10 text-white/50 text-sm hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAdminUnlock}
+                  className="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
+                >
+                  Unlock
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
