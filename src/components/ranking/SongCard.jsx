@@ -6,6 +6,42 @@ import { hexToRgb } from "./colorUtils";
 
 export default function SongCard({ song, onClick, side, tied = false, winRateOverride }) {
   const isLeft = side === "left";
+
+  const songTypeBadge = (() => {
+    const specials = {
+      "Black Mamba":         { text: "Debut",           color: "violet" },
+      "Hot Mess":            { text: "Japanese Debut",  color: "violet" },
+      "Die Trying":          { text: "Collab OST",      color: "orange" },
+      "Beautiful Christmas": { text: "Collab Single",   color: "orange" },
+      "Dark Arts":           { text: "Collab OST",      color: "orange" },
+      "Keychain":            { text: "Collab OST",      color: "orange" },
+      "We Go":               { text: "Japanese OST",    color: "yellow" },
+      "ZOOM ZOOM":           { text: "Japanese OST",    color: "yellow" },
+      "Attitude":            { text: "Japanese OST",    color: "yellow" },
+    };
+    if (specials[song.title]) return specials[song.title];
+    switch (song.song_type) {
+      case "title_track":   return { text: "Title Track", color: "violet" };
+      case "b_side":        return { text: "B-Side",      color: "blue"   };
+      case "single":        return { text: "Single",      color: "green"  };
+      case "solo":          return { text: song.featured_member ? `Solo · ${song.featured_member}` : "Solo", color: "pink" };
+      case "collaboration": return { text: "Collab",      color: "orange" };
+      case "ost":           return { text: "OST",         color: "yellow" };
+      case "pre_release":   return { text: "Pre-release", color: "purple" };
+      default:              return null;
+    }
+  })();
+
+  const badgeClass = {
+    violet: "bg-violet-500/20 text-violet-300 border-violet-500/30",
+    blue:   "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    green:  "bg-green-500/20 text-green-300 border-green-500/30",
+    pink:   "bg-pink-500/20 text-pink-300 border-pink-500/30",
+    orange: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+    yellow: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+    purple: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  };
+
   const c = song.song_color || song.lightstick_color || "#a78bfa";
 
   // Win rate — use override (snapshot) if provided, else live
@@ -87,6 +123,13 @@ export default function SongCard({ song, onClick, side, tied = false, winRateOve
           <p className="text-white/40 text-xs font-medium uppercase tracking-widest line-clamp-1">
             {song.album}
           </p>
+          {songTypeBadge && (
+            <div className="flex justify-center mt-0.5">
+              <span className={`inline-block px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider ${badgeClass[songTypeBadge.color]}`}>
+                {songTypeBadge.text}
+              </span>
+            </div>
+          )}
           {song.collab_info && (
             <p className="text-pink-400/70 text-[10px] line-clamp-1">{song.collab_info}</p>
           )}

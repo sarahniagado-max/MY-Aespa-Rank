@@ -66,6 +66,21 @@ export function useSongs() {
 
   const songs = useMemo(() => {
     return dbSongs.map(dbSong => {
+      const SPECIAL_LABELS = {
+        "Black Mamba":         "Debut",
+        "Hot Mess":            "Japanese Debut",
+        "We Go":               "Japanese OST",
+        "ZOOM ZOOM":           "Japanese OST",
+        "Attitude":            "Japanese OST",
+        "Die Trying":          "OST",
+        "Beautiful Christmas": null,
+        "Dark Arts":           "OST",
+        "Keychain":            "OST",
+      };
+      const label = Object.prototype.hasOwnProperty.call(SPECIAL_LABELS, dbSong.title)
+        ? SPECIAL_LABELS[dbSong.title]
+        : null;
+
       const album = albumMap[dbSong.album];
       // Cover: song field → album entity cover_url
       const resolvedCover = (dbSong.cover_url && dbSong.cover_url.trim())
@@ -77,6 +92,7 @@ export function useSongs() {
       const songColor = getSongColor(albumColors, songIdx, totalInAlbum);
       return {
         ...dbSong,
+        label,
         cover_url: resolvedCover,
         yt_id: extractYtId(dbSong.youtube_url) || null,
         member: dbSong.featured_member || null,

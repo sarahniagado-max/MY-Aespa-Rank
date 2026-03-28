@@ -654,6 +654,7 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
             </Link>
             <div className="flex items-center gap-1.5 flex-wrap">
               {song.collab_info && <span className="text-pink-400/70 text-[9px]">{song.collab_info}</span>}
+              {song.label && <span className="text-amber-400/80 text-[9px] font-bold">{song.label}</span>}
               {song.song_type === "cover" && song.original_title && (
                 <span className="text-cyan-400/70 text-[9px]">Cover of {song.original_title}{song.original_artist ? ` by ${song.original_artist}` : ""}</span>
               )}
