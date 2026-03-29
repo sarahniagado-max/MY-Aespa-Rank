@@ -226,11 +226,12 @@ export default function Battle() {
       const currentSongs = getFilteredSongs();
       const songATitle = currentSongs[parseInt(aId)]?.title;
       const songBTitle = currentSongs[parseInt(bId)]?.title;
+      const preBattleResults = getBattleResults();
       recordTieResult(songATitle, songBTitle);
       recordDecisionTime(songATitle, songBTitle, elapsed);
       const result = calculateEloDraw(ratings[aId] || 1400, ratings[bId] || 1400);
       const newRatings = { ...ratings, [aId]: result.a, [bId]: result.b };
-      advanceBattle(newRatings);
+      advanceBattle(newRatings, preBattleResults);
     }, 700);
   };
 
@@ -242,17 +243,18 @@ export default function Battle() {
     const currentSongsForSelect = getFilteredSongs();
     const winnerTitle = currentSongsForSelect[parseInt(winnerId)]?.title;
     const loserTitle = currentSongsForSelect[parseInt(loserId)]?.title;
+    const preBattleResults = getBattleResults();
     recordBattleResult(winnerTitle, loserTitle);
     recordDecisionTime(winnerTitle, loserTitle, elapsed);
     const result = calculateElo(ratings[winnerId] || 1400, ratings[loserId] || 1400);
     const newRatings = { ...ratings, [winnerId]: result.winner, [loserId]: result.loser };
-    advanceBattle(newRatings);
+    advanceBattle(newRatings, preBattleResults);
   };
 
-  const advanceBattle = (newRatings) => {
+  const advanceBattle = (newRatings, preBattleResults) => {
     const nextIndex = currentIndex + 1;
     battleStartTime.current = Date.now();
-    setHistory(h => [...h.slice(-19), { ratings, index: currentIndex, battleResults: getBattleResults() }]);
+    setHistory(h => [...h.slice(-19), { ratings, index: currentIndex, battleResults: preBattleResults }]);
     setRatings(newRatings);
     setCurrentIndex(nextIndex);
     setBattleKey(k => k + 1);
