@@ -294,6 +294,11 @@ export default function SongPreviewPlayer({
           0%, 100% { box-shadow: 0 0 4px ${rgba(0.25)}; }
           50%       { box-shadow: 0 0 10px ${rgba(0.55)}, 0 0 18px ${rgba(0.2)}; }
         }
+        @keyframes pill-bg-${safeId} {
+          0%   { background-position: 0% 50%; }
+          50%  { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
         .pill-idle-${safeId} {
           border: 1.5px solid ${rgba(0.4)};
           background: #080808;
@@ -307,11 +312,12 @@ export default function SongPreviewPlayer({
           color: ${rgba(1)};
         }
         .pill-playing-${safeId} {
-          background: ${rgba(0.18)};
+          background: linear-gradient(135deg, ${rgba(0.8)}, ${rgba(0.4)}, ${rgba(0.75)}, ${rgba(0.3)});
+          background-size: 300% 300%;
+          animation: pill-bg-${safeId} 2s ease-in-out infinite;
           border: 1.5px solid ${rgba(0.5)};
           color: #fff;
           box-shadow: 0 0 14px ${rgba(0.4)};
-          transition: all 0.25s ease;
         }
       `}</style>
       <div className="relative" ref={pillRef} style={{ display: 'inline-flex' }}>
