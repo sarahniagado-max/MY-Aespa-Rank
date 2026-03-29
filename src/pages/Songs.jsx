@@ -417,7 +417,7 @@ export default function Songs() {
                       </div>
                     </div>
                     <div className="overflow-y-auto flex-1 p-3 space-y-1">
-                      {albumSongs.map(song => (
+                      {albumSongs.map((song, songIdx) => (
                         <div
                           key={song.title}
                           className="flex items-center justify-between py-2 px-3 rounded-xl gap-2"
@@ -428,7 +428,7 @@ export default function Songs() {
                             {song.collab_info && <p className="text-pink-400/70 text-[9px]">{song.collab_info}</p>}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <SongPreviewPlayer songTitle={song.title} songData={song} compact />
+                            <SongPreviewPlayer songTitle={song.title} songData={song} compact songIndex={songIdx} totalInAlbum={albumSongs.length} />
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[song.song_type] || "text-white/40 bg-white/5"}`}>
                               {TYPE_LABELS[song.song_type] || song.song_type}
                             </span>
@@ -540,7 +540,7 @@ export default function Songs() {
                       const songColor = colors ? getSongColor(colors, songIdx, songs.length) : null;
                       const nextSongColor = colors && songIdx < songs.length - 1 ? getSongColor(colors, songIdx + 1, songs.length) : null;
                       return (
-                        <SongRow key={song.title} song={song} albumCoverMap={albumCoverMap} lightstickColor={lightstick} songColor={songColor} nextSongColor={nextSongColor} albumKey={key} shimmerOpacity={songIdx === 0 ? 0.5 : 0.25} onDelete={song.isCustom ? handleDeleteCustomSong : null} onEdit={song.isCustom ? handleEditSong : null} />
+                        <SongRow key={song.title} song={song} albumCoverMap={albumCoverMap} lightstickColor={lightstick} songColor={songColor} nextSongColor={nextSongColor} albumKey={key} shimmerOpacity={songIdx === 0 ? 0.5 : 0.25} onDelete={song.isCustom ? handleDeleteCustomSong : null} onEdit={song.isCustom ? handleEditSong : null} songIndex={songIdx} totalInAlbum={songs.length} />
                       );
                     })}
                   </div>
@@ -573,7 +573,7 @@ export default function Songs() {
   );
 }
 
-function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, albumCoverMap = {}, lightstickColor = null, songColor = null, nextSongColor = null, albumKey = '', shimmerOpacity = 0.25 }) {
+function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, albumCoverMap = {}, lightstickColor = null, songColor = null, nextSongColor = null, albumKey = '', shimmerOpacity = 0.25, songIndex, totalInAlbum }) {
   const memberStyle = song.member ? MEMBER_STYLES[song.member] : null;
   const ac = getAlbumColor(song.album);
   const cardColor = songColor || null;
@@ -684,7 +684,7 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
           <button onClick={openNotes} className="text-white/20 hover:text-yellow-400 transition-colors p-0.5">
             <Star className="w-3.5 h-3.5" />
           </button>
-          <SongPreviewPlayer songTitle={song.title} songData={song} compact songColor={cardColor} lightstickColor={lightstickColor} />
+          <SongPreviewPlayer songTitle={song.title} songData={song} compact songColor={cardColor} lightstickColor={lightstickColor} songIndex={songIndex} totalInAlbum={totalInAlbum} />
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${TYPE_COLORS[song.song_type] || "text-white/40 bg-white/5"}`}>
             {TYPE_LABELS[song.song_type] || song.song_type}
           </span>

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Play, Square } from "lucide-react";
 import { extractYtId } from "./useSongs";
-import { getSongColor } from "./colorUtils";
 
 // Global audio state — only one preview plays at a time
 let currentStopFn = null;
@@ -25,86 +24,7 @@ function incrementPlayCount(title) {
 export function getPlayCount(title) { return getPlayCounts()[title] || 0; }
 export function getAllPlayCounts() { return getPlayCounts(); }
 
-// SVG sweep ring — draws a rounded-rect stroke outside the pill, sweeping clockwise
-function SweepBorder({ progress, color, pillRef }) {
-  const [dims, setDims] = useState(null);
-  const PAD = 3;    // px gap outside pill
-  const SW = 2.5;   // stroke width
 
-  useEffect(() => {
-    if (!pillRef.current) return;
-    const update = () => {
-      const r = pillRef.current.getBoundingClientRect();
-      setDims({ w: r.width, h: r.height });
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(pillRef.current);
-    return () => ro.disconnect();
-  }, [pillRef]);
-
-  if (!dims || progress <= 0) return null;
-
-  // SVG canvas is pill size + PAD on all sides + half stroke-width extra
-  const extra = PAD + SW / 2;
-  const svgW = dims.w + extra * 2;
-  const svgH = dims.h + extra * 2;
-
-  // The rounded rect we draw
-  const rx = (dims.h / 2) + PAD; // pill corner radius + offset
-  const rectX = extra - SW / 2;
-  const rectY = extra - SW / 2;
-  const rectW = dims.w + SW;
-  const rectH = dims.h + SW;
-
-  // Perimeter = 2 * straight segments + full circle circumference
-  // straight segments: max(0, w - 2*rx) for top+bottom, max(0, h - 2*rx) for left+right
-  const straightH = Math.max(0, rectH - 2 * rx);
-  const straightW = Math.max(0, rectW - 2 * rx);
-  const perim = 2 * straightW + 2 * straightH + 2 * Math.PI * rx;
-  const dashLen = perim * Math.min(progress, 1);
-
-  return (
-    <svg
-      style={{
-        position: 'absolute',
-        left: -(extra),
-        top: -(extra),
-        width: svgW,
-        height: svgH,
-        pointerEvents: 'none',
-        overflow: 'visible',
-        zIndex: 10,
-        // Rotate -90deg so the sweep starts from the top-center (12 o'clock)
-        transformOrigin: `${svgW / 2}px ${svgH / 2}px`,
-        transform: 'rotate(-90deg)',
-      }}
-    >
-      <rect
-        x={rectX}
-        y={rectY}
-        width={rectW}
-        height={rectH}
-        rx={rx}
-        ry={rx}
-        fill="none"
-        stroke={color}
-        strokeWidth={SW}
-        strokeLinecap="round"
-        strokeOpacity={0.85}
-        strokeDasharray={`${dashLen} ${perim}`}
-        strokeDashoffset={0}
-      />
-    </svg>
-  );
-}
-
-// Compute mirror color using getSongColor: song at index i gets color of song at (n-1-i)
-function getMirrorColor(colorArray, songIndex, totalInAlbum) {
-  if (!colorArray || colorArray.length === 0) return '#a78bfa';
-  const mirrorIdx = Math.max(0, (totalInAlbum - 1 - songIndex) % Math.max(1, totalInAlbum));
-  return getSongColor(colorArray, mirrorIdx, totalInAlbum);
-}
 
 export default function SongPreviewPlayer({
   songTitle,
@@ -114,8 +34,6 @@ export default function SongPreviewPlayer({
   onEnded,
   lightstickColor,
   songColor,
-  songIndex,      // index of this song within its album (0-based)
-  totalInAlbum,   // total songs in this album
 }) {
   const colorArray = React.useMemo(() => {
     const raw = lightstickColor || songData?.lightstick_color || null;
@@ -124,12 +42,7 @@ export default function SongPreviewPlayer({
     return arr.length > 0 ? arr : null;
   }, [lightstickColor, songData?.lightstick_color]);
 
-  // Mirror color for sweep border
-  const sweepColor = React.useMemo(() => {
-    const idx = songIndex ?? 0;
-    const total = totalInAlbum ?? (colorArray?.length ?? 1);
-    return getMirrorColor(colorArray, idx, total);
-  }, [colorArray, songIndex, totalInAlbum]);
+  const sweepColor = '#a78bfa';
 
   // Base color for the pill (first album color or songColor)
   const lsColor = songColor || (colorArray ? colorArray[0] : null) || null;
@@ -148,7 +61,6 @@ export default function SongPreviewPlayer({
   const safeId = React.useMemo(() => songTitle.replace(/[^a-zA-Z0-9]/g, '_'), [songTitle]);
 
   const iframeRef = useRef(null);
-  const pillRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [fading, setFading] = useState(false);
   const [playCount, setPlayCount] = useState(() => getPlayCount(songTitle));
@@ -202,7 +114,7 @@ export default function SongPreviewPlayer({
     if (halfTimer.current) clearTimeout(halfTimer.current);
     clearFadeInterval();
     clearSweepRaf();
-    setSweepProgress(0);
+    setTimeout(() => setSweepProgress(0), 300);
     didCountRef.current = false;
     playingRef.current = false;
 
@@ -261,7 +173,7 @@ export default function SongPreviewPlayer({
 
     fadeTimer.current = setTimeout(() => {
       if (stopRef.current) stopRef.current(false);
-    }, duration - 1500);
+    }, duration);
 
     halfTimer.current = setTimeout(() => {
       if (!didCountRef.current) {
@@ -281,6 +193,7 @@ export default function SongPreviewPlayer({
       clearSweepRaf();
       if (iframeRef.current) iframeRef.current.src = "";
       playingRef.current = false;
+      setSweepProgress(0);
     };
   // eslint-disable-next-line
   }, [autoplay]);
@@ -320,8 +233,24 @@ export default function SongPreviewPlayer({
           box-shadow: 0 0 14px ${rgba(0.4)};
         }
       `}</style>
-      <div className="relative" ref={pillRef} style={{ display: 'inline-flex' }}>
-        <SweepBorder progress={sweepProgress} color={sweepColor} pillRef={pillRef} />
+      <div className="relative" style={{ display: 'inline-flex' }}>
+        <div style={{
+          display: sweepProgress > 0 ? 'block' : 'none',
+          position: 'absolute',
+          inset: '-3px',
+          borderRadius: '999px',
+          padding: '2.5px',
+          background: `conic-gradient(from 0deg, ${sweepColor}99 0%, ${sweepColor} ${sweepProgress * 100}%, transparent ${sweepProgress * 100}%)`,
+          zIndex: -1,
+          pointerEvents: 'none',
+        }}>
+          <div style={{
+            borderRadius: '999px',
+            background: '#111',
+            width: '100%',
+            height: '100%',
+          }} />
+        </div>
         <button
           onClick={handlePlay}
           className={`${playing ? `pill-playing-${safeId}` : `pill-idle-${safeId}`} flex items-center gap-1 rounded-full font-semibold uppercase tracking-wider outline-none focus:outline-none ${
