@@ -575,9 +575,9 @@ export default function Battle() {
               <div className="grid grid-cols-2 gap-3 relative">
                 {isLastBattle ? (
                   <>
-                    {/* Last battle: card clicks do nothing — only the Hold Select buttons work */}
-                    <SongCard song={songA} side="left" onClick={null} tied={tiedCards} winRateOverride={getWinRate(songA?.title, history[history.length - 1]?.battleResults)} />
-                    <SongCard song={songB} side="right" onClick={null} tied={tiedCards} winRateOverride={getWinRate(songB?.title, history[history.length - 1]?.battleResults)} />
+                    {/* Last battle: card not clickable — hold the Select pill to confirm */}
+                    <SongCard song={songA} side="left" onClick={null} tied={tiedCards} winRateOverride={getWinRate(songA?.title, history[history.length - 1]?.battleResults)} onHoldConfirm={!tiedCards ? () => handleSelect(currentPair[0]) : undefined} />
+                    <SongCard song={songB} side="right" onClick={null} tied={tiedCards} winRateOverride={getWinRate(songB?.title, history[history.length - 1]?.battleResults)} onHoldConfirm={!tiedCards ? () => handleSelect(currentPair[1]) : undefined} />
                   </>
                 ) : (
                   <>
@@ -594,23 +594,6 @@ export default function Battle() {
                 )}
               </div>
 
-              {/* Last-battle select buttons — hold required, below the cards */}
-              {isLastBattle && !tiedCards && (
-                <div className="grid grid-cols-2 gap-3 mt-2">
-                  <HoldBtn
-                    onConfirm={() => handleSelect(currentPair[0])}
-                    className="py-3 rounded-2xl aurora-btn text-white font-black text-xs uppercase tracking-widest"
-                  >
-                    Hold to Select ⬅
-                  </HoldBtn>
-                  <HoldBtn
-                    onConfirm={() => handleSelect(currentPair[1])}
-                    className="py-3 rounded-2xl aurora-btn text-white font-black text-xs uppercase tracking-widest"
-                  >
-                    Hold to Select ➡
-                  </HoldBtn>
-                </div>
-              )}
 
               <div className="flex justify-center mt-4 gap-2">
                 <button

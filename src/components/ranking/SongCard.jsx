@@ -1,10 +1,31 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import CoverImg from "./CoverImg";
 import { getBattleResults } from "../battleStats";
 import { hexToRgb } from "./colorUtils";
 
-export default function SongCard({ song, onClick, side, tied = false, winRateOverride }) {
+export default function SongCard({ song, onClick, side, tied = false, winRateOverride, onHoldConfirm }) {
+  const [holdProgress, setHoldProgress] = useState(0);
+  const holdRafRef = useRef(null);
+  const holdStartRef = useRef(null);
+
+  const startHold = (e) => {
+    e.preventDefault();
+    holdStartRef.current = Date.now();
+    const tick = () => {
+      const p = Math.min(100, ((Date.now() - holdStartRef.current) / 2000) * 100);
+      setHoldProgress(p);
+      if (p < 100) holdRafRef.current = requestAnimationFrame(tick);
+      else { setHoldProgress(0); onHoldConfirm(); }
+    };
+    holdRafRef.current = requestAnimationFrame(tick);
+  };
+
+  const cancelHold = () => {
+    if (holdRafRef.current) cancelAnimationFrame(holdRafRef.current);
+    setHoldProgress(0);
+  };
+
   const isLeft = side === "left";
 
   const songTypeBadge = (() => {
@@ -144,13 +165,21 @@ export default function SongCard({ song, onClick, side, tied = false, winRateOve
 
         {/* Select indicator */}
         <div
-          className={`mt-1 px-5 py-2 rounded-full border transition-all duration-300 ${
-            tied ? "bg-violet-500/20 border-violet-400/50" : "border-white/10 bg-white/5"
-          }`}
+          className={`relative mt-1 px-5 py-2 rounded-full border overflow-hidden transition-all duration-300 ${
+            onHoldConfirm && !tied ? 'cursor-pointer select-none' : ''
+          } ${tied ? "bg-violet-500/20 border-violet-400/50" : "border-white/10 bg-white/5"}`}
           style={!tied ? { borderColor: `${c}40` } : {}}
+          onMouseDown={onHoldConfirm && !tied ? startHold : undefined}
+          onMouseUp={onHoldConfirm ? cancelHold : undefined}
+          onMouseLeave={onHoldConfirm ? cancelHold : undefined}
+          onTouchStart={onHoldConfirm && !tied ? startHold : undefined}
+          onTouchEnd={onHoldConfirm ? cancelHold : undefined}
         >
+          {holdProgress > 0 && (
+            <div className="absolute inset-0 origin-left bg-white/20" style={{ width: `${holdProgress}%`, transition: 'none' }} />
+          )}
           <span
-            className={`text-xs font-semibold uppercase tracking-widest transition-colors ${
+            className={`relative z-10 text-xs font-semibold uppercase tracking-widest transition-colors ${
               tied ? "text-violet-300" : "text-white/60 group-hover:text-white"
             }`}
             style={!tied ? { '--hover-color': c } : {}}
