@@ -121,7 +121,7 @@ export default function SongCard({ song, onClick, side, tied = false, winRateOve
     >
     <div
       onClick={onClick}
-      className={`relative w-full group rounded-2xl bg-gradient-to-b from-white/5 to-transparent backdrop-blur-sm ${onClick ? 'cursor-pointer' : 'pointer-events-none'}`}
+      className={`relative w-full group rounded-2xl bg-gradient-to-b from-white/5 to-transparent backdrop-blur-sm ${(onClick || onHoldConfirm) ? 'cursor-pointer' : 'pointer-events-none'}`}
     >
       <div className="relative p-4 flex flex-col items-center gap-3">
         {/* Album art */}
