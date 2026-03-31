@@ -30,15 +30,15 @@ function buildSequence(allGroups, limit) {
   if (limit > 0) {
     let count = 0;
     filtered = [];
-    for (const g of [...allGroups].reverse()) {
-      filtered.unshift(g);
+    for (const g of [...allGroups]) {
+      filtered.push(g);
       count += g.length;
       if (count >= limit) break;
     }
   } else {
     filtered = allGroups;
   }
-  // reversed: index 0 = lowest rank group, last = #1
+  // index 0 = lowest rank group, last = #1
   return [...filtered].reverse();
 }
 
@@ -305,7 +305,6 @@ export default function RankingReveal() {
     const allGroups = groupByTie(rankings);
     const limit = rankings.length > 10 ? 10 : 5;
     const groups = buildSequence(allGroups, limit);
-
     const seq = [];
     groups.forEach((group, groupIdx) => {
       const rank = computeRank(groups, groupIdx);
