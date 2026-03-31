@@ -286,6 +286,7 @@ export default function Battle() {
       allRankings.push(newEntry);
       localStorage.setItem(ALL_RANKINGS_KEY, JSON.stringify(allRankings));
       checkAchievements(newEntry, allRankings);
+      localStorage.removeItem("aespa_ranking_name");
       navigate(createPageUrl("RankingReveal"));
       return;
     } else {

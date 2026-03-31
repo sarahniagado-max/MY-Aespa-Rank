@@ -64,19 +64,19 @@ function buildYtSrc(song) {
 
 // ── Timer bar ────────────────────────────────────────────────────
 function TimerBar({ duration, active, resetKey }) {
-  const [progress, setProgress] = useState(1);
+  const [progress, setProgress] = useState(0);
   const startRef = useRef(null);
   const rafRef = useRef(null);
 
   useEffect(() => {
-    setProgress(1);
+    setProgress(0);
     if (!active) return;
     startRef.current = Date.now();
     const tick = () => {
       const elapsed = Date.now() - startRef.current;
-      const p = Math.max(0, 1 - elapsed / duration);
+      const p = Math.min(1, elapsed / duration);
       setProgress(p);
-      if (p > 0) rafRef.current = requestAnimationFrame(tick);
+      if (p < 1) rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
@@ -87,7 +87,9 @@ function TimerBar({ duration, active, resetKey }) {
       <div
         className="h-full transition-none"
         style={{
-          width: `${progress * 100}%`,
+          width: "100%",
+          transform: `scaleX(${1 - progress})`,
+          transformOrigin: "right",
           background: "linear-gradient(90deg, #a78bfa, #67e8f9, #f0abfc)",
         }}
       />
@@ -270,6 +272,8 @@ export default function RankingReveal() {
   const navigate = useNavigate();
   const [rankingData, setRankingData] = useState(null);
   const [started, setStarted] = useState(false);
+  const [showNamePopup, setShowNamePopup] = useState(false);
+  const [rankingName, setRankingName] = useState("");
 
   // Sequence: flat list of { group, rank, tieCardIndex (for tie groups) }
   // We build a flat step sequence where each step is one "screen moment"
@@ -356,12 +360,18 @@ export default function RankingReveal() {
       seqIdxRef.current = nextIdx;
 
       if (nextIdx >= seq.length) {
-        // Done — transition out then navigate to results
+        // Done — transition out, then popup or navigate
         doneRef.current = true;
         setDone(true);
         setVisible(false);
         stopAudio();
-        setTimeout(() => navigate(createPageUrl("Results")), 1200);
+        setTimeout(() => {
+          if (localStorage.getItem("aespa_ranking_name")) {
+            navigate(createPageUrl("Results"));
+          } else {
+            setShowNamePopup(true);
+          }
+        }, 1000);
         return;
       }
 
@@ -381,7 +391,7 @@ export default function RankingReveal() {
         scheduleNext(nextIdx);
       }, 700); // match fade duration
     }, duration);
-  }, [getDuration, stopAudio, playAudio, navigate]);
+  }, [getDuration, stopAudio, playAudio, navigate, setShowNamePopup]);
 
   const handleStart = useCallback(() => {
     setStarted(true);
@@ -411,12 +421,45 @@ export default function RankingReveal() {
     }
   }, [sequence, handleStart, started]);
 
+  const handleNext = useCallback(() => {
+    if (doneRef.current) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    const seq = sequenceRef.current;
+    const currentIdx = seqIdxRef.current;
+    const nextIdx = currentIdx + 1;
+    seqIdxRef.current = nextIdx;
+    setVisible(false);
+    stopAudio();
+    if (nextIdx >= seq.length) {
+      doneRef.current = true;
+      setDone(true);
+      return;
+    }
+    setTimeout(() => {
+      setSeqIdx(nextIdx);
+      setVisible(true);
+      timerKey.current += 1;
+      const nextStep = seq[nextIdx];
+      const songToPlay = nextStep.isTie
+        ? nextStep.group[nextStep.tieCardIdx]?.song
+        : nextStep.group[0]?.song;
+      playAudio(songToPlay);
+      scheduleNext(nextIdx);
+    }, 700);
+  }, [stopAudio, playAudio, scheduleNext]);
+
   const handleSkip = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     stopAudio();
     doneRef.current = true;
-    navigate(createPageUrl("Results"));
+    if (localStorage.getItem("aespa_ranking_name")) {
+      navigate(createPageUrl("Results"));
+    } else {
+      setDone(true);
+      setShowNamePopup(true);
+    }
   }, [stopAudio, navigate]);
 
   // Cleanup on unmount
@@ -456,7 +499,14 @@ export default function RankingReveal() {
         <TimerBar duration={duration} active={visible} resetKey={`${timerKey.current}-${seqIdx}`} />
       )}
 
-      {/* Skip button — always during reveal */}
+      {/* Reveal counter — top left */}
+      {started && !done && (
+        <div className="fixed top-4 left-4 z-50 text-[11px] font-bold uppercase tracking-wider text-white/30">
+          TOP {sequence.length} REVEAL · {seqIdx + 1}/{sequence.length}
+        </div>
+      )}
+
+      {/* Skip button — top right during reveal */}
       {started && !done && (
         <button
           onClick={handleSkip}
@@ -467,6 +517,77 @@ export default function RankingReveal() {
         </button>
       )}
 
+      {/* NEXT / SEE FULL RANKING button */}
+      {started && !done && (
+        <button
+          onClick={
+            seqIdx === sequence.length - 1
+              ? () => {
+                  if (localStorage.getItem("aespa_ranking_name")) {
+                    navigate(createPageUrl("Results"));
+                  } else {
+                    setShowNamePopup(true);
+                  }
+                }
+              : handleNext
+          }
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider border border-white/15 text-white/30 hover:text-white/60 hover:border-white/30 transition-all bg-black/40 backdrop-blur-sm"
+        >
+          {seqIdx === sequence.length - 1 ? "SEE FULL RANKING →" : "NEXT →"}
+        </button>
+      )}
+
+      {/* Name Your Ranking popup */}
+      <AnimatePresence>
+        {showNamePopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-sm bg-[#0e0e0e] border border-white/10 rounded-2xl p-6 flex flex-col gap-4"
+            >
+              <div>
+                <h2 className="text-white font-black text-lg tracking-tight">Name Your Ranking</h2>
+                <p className="text-white/35 text-xs mt-1">Optional — leave blank for an auto-generated name</p>
+              </div>
+              <input
+                type="text"
+                value={rankingName}
+                onChange={e => setRankingName(e.target.value)}
+                placeholder={`My Ranking · ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/20 outline-none focus:border-violet-500/40"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const auto = `My Ranking · ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+                    localStorage.setItem("aespa_ranking_name", auto);
+                    navigate(createPageUrl("Results"));
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/40 text-sm font-semibold hover:text-white/60 hover:border-white/20 transition-all"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={() => {
+                    const name = rankingName.trim() || `My Ranking · ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+                    localStorage.setItem("aespa_ranking_name", name);
+                    navigate(createPageUrl("Results"));
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-violet-600/80 hover:bg-violet-600 text-white text-sm font-semibold transition-all"
+                >
+                  Save
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Song slides */}
       {started && currentStep && (

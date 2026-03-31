@@ -8,7 +8,7 @@ export default function NavBar() {
   const location = useLocation();
 
   // Hide on home page since it has its own header with the toggle
-  if (location.pathname === "/" || location.pathname === "/Home") return null;
+  if (location.pathname === "/" || location.pathname === "/Home" || location.pathname === "/RankingReveal") return null;
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-4 py-2 bg-black/60 backdrop-blur-md border-b border-white/5">
