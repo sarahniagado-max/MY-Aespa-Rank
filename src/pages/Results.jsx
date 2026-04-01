@@ -21,6 +21,7 @@ export default function Results() {
   const [showSlideshow, setShowSlideshow] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [activeTab, setActiveTab] = useState("ranking"); // "ranking" | "playlist"
+  const [topFilter, setTopFilter] = useState("all"); // "all" | "top5" | "top10"
 
   useEffect(() => {
     try {
@@ -251,35 +252,68 @@ export default function Results() {
               </div>
             </div>
 
-            {/* Album Filter */}
-            <div className="relative z-10 px-4 py-2">
-              <AlbumFilter albums={albums} selectedAlbum={filterAlbum} onSelect={setFilterAlbum} />
+            {/* Top Filter Pills */}
+            <div className="relative z-10 px-4 pt-2 flex gap-2">
+              {[
+                { id: "all", label: "All", icon: null },
+                { id: "top5", label: "Top 5", icon: Star },
+                ...(rankings.length > 10 ? [{ id: "top10", label: "Top 10", icon: Medal }] : []),
+              ].map(pill => (
+                <button
+                  key={pill.id}
+                  onClick={() => setTopFilter(pill.id)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border transition-all ${
+                    topFilter === pill.id
+                      ? "bg-violet-600 border-violet-500 text-white"
+                      : "bg-white/5 border-white/10 text-white/40"
+                  }`}
+                >
+                  {pill.icon && <pill.icon className="w-3 h-3" />}
+                  {pill.label}
+                </button>
+              ))}
             </div>
+
+            {/* Album Filter */}
+            {(!rankingData.albumFilter || rankingData.albumFilter === "all") && (
+              <div className="relative z-10 px-4 py-2">
+                <AlbumFilter albums={albums} selectedAlbum={filterAlbum} onSelect={setFilterAlbum} />
+              </div>
+            )}
 
             {/* Rankings list */}
             <div className="relative z-10 px-4 mt-2">
-              {filteredRankings.map((item, index) => {
-                const trueRank = filteredRankings.filter(x => x.rating > item.rating).length + 1;
+              {(() => {
+                let uniqueRankCounter = 0;
+                let prevRating = null;
+                let currentGroupRank = 0;
+                return (topFilter === "top5" ? filteredRankings.slice(0, 5) : topFilter === "top10" ? filteredRankings.slice(0, 10) : filteredRankings).map((item, index) => {
+                if (item.rating !== prevRating) {
+                  uniqueRankCounter++;
+                  currentGroupRank = uniqueRankCounter;
+                }
+                prevRating = item.rating;
+                const displayRank = currentGroupRank;
                 // Is this item part of a tie group?
                 const isTied = filteredRankings.filter(x => x.rating === item.rating).length > 1;
                 const isFirstOfTie = isTied && (index === 0 || filteredRankings[index - 1].rating !== item.rating);
                 const isLastOfTie = isTied && (index === filteredRankings.length - 1 || filteredRankings[index + 1].rating !== item.rating);
-                const change = getRankChange(item.song, trueRank);
+                const change = getRankChange(item.song, displayRank);
                 return (
                   <div
                     key={item.songIndex}
                     className={`relative flex items-center gap-2 ${
                       isTied
-                        ? `${isFirstOfTie ? "mt-2 rounded-t-xl" : ""} ${isLastOfTie ? "rounded-b-xl mb-2" : ""} bg-violet-950/20 border-l-2 border-violet-500/40`
+                        ? `${isFirstOfTie ? "mt-4 rounded-t-xl" : ""} ${isLastOfTie ? "rounded-b-xl mb-2" : ""} bg-violet-950/20 border-l-2 border-violet-500/40`
                         : "mb-2"
                     }`}
                   >
                     {/* Tie label on first of group */}
                     {isFirstOfTie && (
-                      <div className="absolute -top-4 left-0 text-[9px] text-violet-400/70 font-bold uppercase tracking-widest px-1">Tied</div>
+                      <div className="absolute -top-2 left-0 text-[11px] text-violet-400/70 font-bold uppercase tracking-widest px-1">Tied</div>
                     )}
                     <div className="flex-1">
-                      <RankingItem song={item.song} rank={trueRank} eloRating={item.rating} index={index} />
+                      <RankingItem song={item.song} rank={displayRank} eloRating={item.rating} index={index} />
                     </div>
                     <div className="shrink-0 flex flex-col items-end gap-1 pr-1">
                       <SongPreviewPlayer songTitle={item.song?.title} compact />
@@ -293,7 +327,8 @@ export default function Results() {
                     </div>
                   </div>
                 );
-              })}
+              });
+              })()}
             </div>
 
             {/* Excluded Songs Section */}
