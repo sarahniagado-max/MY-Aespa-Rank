@@ -100,6 +100,8 @@ export default function MoodBattlePhase({
   const initElo = parseJson(rankingData?.elo_ratings, {});
   const initSeenIds = parseJson(rankingData?.phase1_seen_songs, []);
   const initWinnerIds = parseJson(rankingData?.phase1_winners, []);
+  const initCurrentPair = parseJson(rankingData?.current_pair, []);
+  const initNextPair = parseJson(rankingData?.next_pair, []);
 
   const getEloVal = (id, eloMap) => eloMap[id] ?? 1400;
 
@@ -115,6 +117,11 @@ export default function MoodBattlePhase({
   const [seenIds, setSeenIds] = useState(new Set(initSeenIds));
   const [winnerIds, setWinnerIds] = useState(new Set(initWinnerIds));
   const [pair, setPair] = useState(() => {
+if (initCurrentPair.length === 2) {
+      const a = songs.find(s => s.id === initCurrentPair[0]);
+      const b = songs.find(s => s.id === initCurrentPair[1]);
+      if (a && b) return [a, b];
+    }
     if (phase === 1 && songs.length >= 2) {
       const unseen = songs.filter(s => !initSeenIds.includes(s.id));
       // All seen already — we'll show phase1DoneModal via useEffect
@@ -135,6 +142,10 @@ export default function MoodBattlePhase({
   const [phase1DoneModal, setPhase1DoneModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const battleStart = useRef(Date.now());
+  const initNextPairSongs = initNextPair.length === 2
+    ? [songs.find(s => s.id === initNextPair[0]), songs.find(s => s.id === initNextPair[1])].filter(Boolean)
+    : null;
+  const savedNextPairRef = useRef(initNextPairSongs?.length === 2 ? initNextPairSongs : null);
 
   // Odd-song lone wolf screen (phase 1 only)
   const [loneSong, setLoneSong] = useState(null);
@@ -200,7 +211,7 @@ export default function MoodBattlePhase({
   const initEliminatedIds = parseJson(rankingData?.phase1_eliminated, []);
   const [eliminatedIds, setEliminatedIds] = useState(new Set(initEliminatedIds));
 
-  const saveState = (newElo, newSeen, newWinners, newBattles, newEliminated) => {
+  const saveState = (newElo, newSeen, newWinners, newBattles, newEliminated, currentPairIds, nextPairIds) => {
     const elim = newEliminated !== undefined ? newEliminated : eliminatedIds;
     onSave({
       elo_ratings: JSON.stringify(newElo),
@@ -209,6 +220,8 @@ export default function MoodBattlePhase({
       phase1_eliminated: JSON.stringify([...elim]),
       battles_completed: newBattles,
       phase: currentPhase,
+      current_pair: JSON.stringify(currentPairIds ?? pair.map(s => s.id)),
+      next_pair: JSON.stringify(nextPairIds ?? null),
     });
   };
 
@@ -217,7 +230,6 @@ export default function MoodBattlePhase({
     setSeenIds(newSeen);
     setWinnerIds(newWinners);
     setBattlesCompleted(newBattles);
-    saveState(newElo, newSeen, newWinners, newBattles, newEliminated);
 
     // Phase 1 completion
     if (currentPhase === 1) {
@@ -226,10 +238,14 @@ export default function MoodBattlePhase({
         setTimeout(() => { setIsAnimating(false); setPhase1DoneModal(true); }, 300);
         return;
       }
-      const next = nextPairAfter(newSeen);
+      const next = savedNextPairRef.current ? { pair: savedNextPairRef.current } : nextPairAfter(newSeen);
+      savedNextPairRef.current = null;
       if (!next) { setTimeout(() => { setIsAnimating(false); setPhase1DoneModal(true); }, 300); return; }
       if (next.lone) { setLoneSong(next.lone); setIsAnimating(false); return; }
       setPair(next.pair);
+      const lookaheadSeen = new Set([...newSeen, ...next.pair.map(s => s.id)]);
+      const lookahead = nextPairAfter(lookaheadSeen);
+      saveState(newElo, newSeen, newWinners, newBattles, newEliminated, next.pair.map(s => s.id), lookahead?.pair?.map(s => s.id) ?? null);
       setBattleKey(k => k + 1);
       battleStart.current = Date.now();
       setTimeout(() => setIsAnimating(false), 200);
@@ -245,8 +261,10 @@ export default function MoodBattlePhase({
       }
     }
 
-    const shuffled = [...phase2Songs].sort(() => Math.random() - 0.5);
-    setPair([shuffled[0], shuffled[1]]);
+    const p2pair = savedNextPairRef.current || [...phase2Songs].sort(() => Math.random() - 0.5).slice(0, 2);
+    savedNextPairRef.current = null;
+    setPair(p2pair);
+    saveState(newElo, newSeen, newWinners, newBattles, newEliminated, p2pair.map(s => s.id), null);
     setBattleKey(k => k + 1);
     battleStart.current = Date.now();
     setTimeout(() => setIsAnimating(false), 200);
@@ -267,7 +285,12 @@ export default function MoodBattlePhase({
     if (currentPhase === 1) newWinners.add(winner.id);
     const newBattles = battlesCompleted + 1;
 
-    setHistory(prev => [...prev, { elo: { ...elo }, seenIds: new Set(seenIds), winnerIds: new Set(winnerIds), pair, battlesCompleted, battleResults: getBattleResults() }]);
+    if (!savedNextPairRef.current) {
+      const computedNext = nextPairAfter(newSeen);
+      savedNextPairRef.current = computedNext?.pair || null;
+    }
+    const nextPair = savedNextPairRef.current;
+    setHistory(prev => [...prev, { elo: { ...elo }, seenIds: new Set(seenIds), winnerIds: new Set(winnerIds), pair, battlesCompleted, battleResults: getBattleResults(), nextPair }]);
     afterBattle(newElo, newSeen, newWinners, newBattles);
   };
 
@@ -286,7 +309,12 @@ export default function MoodBattlePhase({
     if (currentPhase === 1) { newWinners.add(a.id); newWinners.add(b.id); }
     const newBattles = battlesCompleted + 1;
 
-    setHistory(prev => [...prev, { elo: { ...elo }, seenIds: new Set(seenIds), winnerIds: new Set(winnerIds), pair, battlesCompleted, battleResults: getBattleResults() }]);
+    if (!savedNextPairRef.current) {
+      const computedNext = nextPairAfter(newSeen);
+      savedNextPairRef.current = computedNext?.pair || null;
+    }
+    const nextPair = savedNextPairRef.current;
+    setHistory(prev => [...prev, { elo: { ...elo }, seenIds: new Set(seenIds), winnerIds: new Set(winnerIds), pair, battlesCompleted, battleResults: getBattleResults(), nextPair }]);
     afterBattle(newElo, newSeen, newWinners, newBattles);
   };
 
@@ -302,7 +330,12 @@ export default function MoodBattlePhase({
     const newEliminated = new Set(eliminatedIds); newEliminated.add(pair[0].id); newEliminated.add(pair[1].id);
     const newBattles = battlesCompleted + 1;
 
-    setHistory(prev => [...prev, { elo: { ...elo }, seenIds: new Set(seenIds), winnerIds: new Set(winnerIds), eliminatedIds: new Set(eliminatedIds), pair, battlesCompleted, battleResults: getBattleResults() }]);
+    if (!savedNextPairRef.current) {
+      const computedNext = nextPairAfter(newSeen);
+      savedNextPairRef.current = computedNext?.pair || null;
+    }
+    const nextPair = savedNextPairRef.current;
+    setHistory(prev => [...prev, { elo: { ...elo }, seenIds: new Set(seenIds), winnerIds: new Set(winnerIds), eliminatedIds: new Set(eliminatedIds), pair, battlesCompleted, battleResults: getBattleResults(), nextPair }]);
     setEliminatedIds(newEliminated);
     afterBattle({ ...elo }, newSeen, new Set(winnerIds), newBattles, newEliminated);
   };
@@ -321,9 +354,10 @@ export default function MoodBattlePhase({
     setPair(prev.pair);
     setBattlesCompleted(prev.battlesCompleted);
     if (prev.battleResults) setBattleResults(prev.battleResults);
+    savedNextPairRef.current = prev.nextPair || null;
     setBattleKey(k => k + 1);
     battleStart.current = Date.now();
-    saveState(prev.elo, prev.seenIds, prev.winnerIds, prev.battlesCompleted);
+    saveState(prev.elo, prev.seenIds, prev.winnerIds, prev.battlesCompleted, undefined, prev.pair.map(s => s.id), prev.nextPair?.map(s => s.id) ?? null);
   };
 
   // Lone-wolf answer
