@@ -106,7 +106,8 @@ function AuroraDate({ date }) {
 
 export default function Songs() {
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("All");
+  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem("aespa_songs_tab") || "All");
+  const handleSetActiveTab = (tab) => { sessionStorage.setItem("aespa_songs_tab", tab); setActiveTab(tab); };
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
   const [customSongs, setCustomSongs] = useState(loadCustomSongs);
@@ -341,7 +342,7 @@ export default function Songs() {
           return (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleSetActiveTab(tab)}
               className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide border transition-all ${
                 isActive
                   ? isCover
@@ -569,6 +570,7 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
   const cardColor = songColor || null;
   const tintMode = useTintMode();
   const [isFav, setIsFav] = React.useState(() => isFavorite(song.title));
+  const [pendingUnfav, setPendingUnfav] = React.useState(false);
   const [showNotes, setShowNotes] = React.useState(false);
   const [personalEntry, setPersonalEntryState] = React.useState(() => getPersonalEntry(song.title));
   const [tempScore, setTempScore] = React.useState("");
@@ -586,7 +588,13 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
 
   const handleFavToggle = (e) => {
     e.stopPropagation();
-    setIsFav(toggleFavorite(song.title));
+    if (isFav) { setPendingUnfav(true); } else { setIsFav(toggleFavorite(song.title)); }
+  };
+
+  const confirmUnfav = () => {
+    toggleFavorite(song.title);
+    setIsFav(false);
+    setPendingUnfav(false);
   };
 
   const openNotes = (e) => { e.stopPropagation(); setTempScore(personalEntry.score != null ? String(personalEntry.score) : ""); setTempNotes(personalEntry.notes || ""); setShowNotes(true); };
@@ -722,6 +730,56 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
           </div>
         </div>
       )}
+
+      {/* Unfavorite confirmation */}
+      <AnimatePresence>
+        {pendingUnfav && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
+            onClick={() => setPendingUnfav(false)}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-xs bg-[#0e0e0e] border border-white/10 rounded-2xl p-6 flex flex-col gap-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <Heart className="w-8 h-8 text-white/20 mx-auto mb-3" />
+                <p className="text-white font-bold text-base leading-snug">Remove from Favorites?</p>
+                <p className="text-white/45 text-sm mt-1 leading-relaxed">
+                  <span className="text-white/70 font-semibold">{song.title}</span> will be removed from your favorites list.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPendingUnfav(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-white text-sm font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmUnfav}
+                  className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-all"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(167,139,250,0.35), rgba(103,232,249,0.2))",
+                    border: "1.5px solid rgba(167,139,250,0.5)",
+                    boxShadow: "0 0 12px rgba(167,139,250,0.25)",
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

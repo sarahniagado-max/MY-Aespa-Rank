@@ -154,8 +154,16 @@ export default function AppTutorial({ onClose }) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: -30, opacity: 0 }}
         transition={{ duration: 0.25 }}
-        className="w-full max-w-sm bg-[#0c0c0c] border border-white/12 rounded-2xl overflow-hidden"
+        className="relative w-full max-w-sm bg-[#0c0c0c] border border-white/12 rounded-2xl overflow-hidden"
       >
+        {/* Close */}
+        <button
+          onClick={handleFinish}
+          className="absolute top-4 right-4 p-1.5 rounded-full bg-white/5 text-white/30 hover:text-white transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
         {/* Progress dots */}
         <div className="flex gap-1.5 justify-center pt-4 px-4">
           {STEPS.map((_, i) => (
@@ -173,14 +181,6 @@ export default function AppTutorial({ onClose }) {
             />
           ))}
         </div>
-
-        {/* Close */}
-        <button
-          onClick={handleFinish}
-          className="absolute top-4 right-4 p-1.5 rounded-full bg-white/5 text-white/30 hover:text-white transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
 
         {/* Content */}
         <div className="p-6 text-center">

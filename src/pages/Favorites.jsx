@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Heart } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { getFavorites, isFavorite, toggleFavorite } from "../components/personalData";
 import { getPersonalEntry, savePersonalEntry } from "../components/personalData";
 import { useSongs } from "../components/ranking/useSongs";
@@ -128,9 +128,16 @@ export default function Favorites() {
 
   const favSongs = dbSongs.filter(s => favTitles.includes(s.title));
 
+  const [pendingUnfavorite, setPendingUnfavorite] = useState(null);
+
   const handleUnfavorite = (title) => {
-    toggleFavorite(title);
-    setFavTitles(prev => prev.filter(t => t !== title));
+    setPendingUnfavorite(title);
+  };
+
+  const confirmUnfavorite = () => {
+    toggleFavorite(pendingUnfavorite);
+    setFavTitles(prev => prev.filter(t => t !== pendingUnfavorite));
+    setPendingUnfavorite(null);
   };
 
   return (
@@ -153,6 +160,56 @@ export default function Favorites() {
       <div className="relative z-10 px-4 pb-2">
         <p className="text-white/40 text-xs font-medium">{favSongs.length} favorited song{favSongs.length !== 1 ? "s" : ""}</p>
       </div>
+
+      {/* Unfavorite confirmation */}
+      <AnimatePresence>
+        {pendingUnfavorite && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
+            onClick={() => setPendingUnfavorite(null)}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-xs bg-[#0e0e0e] border border-white/10 rounded-2xl p-6 flex flex-col gap-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <Heart className="w-8 h-8 text-white/20 mx-auto mb-3" />
+                <p className="text-white font-bold text-base leading-snug">Remove from Favorites?</p>
+                <p className="text-white/45 text-sm mt-1 leading-relaxed">
+                  <span className="text-white/70 font-semibold">{pendingUnfavorite}</span> will be removed from your favorites list.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPendingUnfavorite(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-white text-sm font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmUnfavorite}
+                  className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-all"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(167,139,250,0.35), rgba(103,232,249,0.2))",
+                    border: "1.5px solid rgba(167,139,250,0.5)",
+                    boxShadow: "0 0 12px rgba(167,139,250,0.25)",
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="relative z-10 px-4 pb-24">
         {favSongs.length === 0 ? (
