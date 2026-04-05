@@ -1,13 +1,11 @@
-const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
-
 import React, { useRef, useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { Swords, Trophy, List, BookMarked, ImageIcon, RotateCcw, Award, Zap, Star, ChevronDown, HelpCircle, Settings, MessageSquare, Disc3, BarChart3, Sparkles, Heart, Smile, Lock, LockOpen } from "lucide-react";
-import { useTheme } from "../components/useTheme";
+import { Swords, Trophy, List, BookMarked, ImageIcon, RotateCcw, Award, Zap, Star, ChevronDown, HelpCircle, Settings, MessageSquare, Disc3, BarChart3, Heart, Smile, Lock, LockOpen } from "lucide-react";
 import { useSongs } from "../components/ranking/useSongs";
 import AppTutorial, { shouldShowTutorial } from "../components/tutorial/AppTutorial";
+import { useTintMode } from "../components/AlbumTintManager";
 
 function HowItWorks() {
   const [open, setOpen] = useState(false);
@@ -103,42 +101,27 @@ const BG_KEY = "aespa_home_bg";
 
 export default function Home() {
   const { songs: allSongsDb, albums: allAlbumsDb } = useSongs();
-  const { theme, toggle: toggleTheme } = useTheme();
   const [userEmail, setUserEmail] = useState(null);
   const [isChecking, setIsChecking] = useState(true);
   const [bgUrl, setBgUrl] = useState(() => localStorage.getItem(BG_KEY) || DEFAULT_BG);
   const [showTutorial, setShowTutorial] = useState(false);
   const fileRef = useRef(null);
+  const navigate = useNavigate();
+  const tintMode = useTintMode();
   const [adminUnlocked, setAdminUnlocked] = useState(() => localStorage.getItem("aespa_admin") === "1");
   const [showAdminPopup, setShowAdminPopup] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [adminError, setAdminError] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const u = await db.auth.me();
-        setUserEmail(u?.email || null);
-      } catch (error) {
-        setUserEmail(null);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-    checkAuth();
+    setUserEmail(null);
+    setIsChecking(false);
   }, []);
 
   useEffect(() => {
     if (shouldShowTutorial()) setShowTutorial(true);
   }, []);
 
-  if (isChecking) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-violet-500/30 border-t-violet-400 rounded-full animate-spin" />
-      </div>
-    );
-  }
   const savedRanking = localStorage.getItem("aespa_ranking_complete");
   const allRankings = (() => {
     try { return JSON.parse(localStorage.getItem("aespa_all_rankings") || "[]"); } catch { return []; }
@@ -200,17 +183,25 @@ export default function Home() {
           </span>
         </div>
         {/* Image controls */}
-        <div className="absolute top-4 right-4 flex gap-2">
+        <div className="absolute top-4 right-4 flex gap-2 items-center">
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
+          <button
+            onClick={() => navigate(createPageUrl('Settings'))}
+            className="font-bold leading-none"
+            title="Settings"
+            style={{
+              fontSize: '15px',
+              background: tintMode === 'tint' ? 'none' : 'linear-gradient(135deg, #a78bfa, #67e8f9)',
+              WebkitBackgroundClip: tintMode === 'tint' ? 'unset' : 'text',
+              WebkitTextFillColor: tintMode === 'tint' ? 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))' : 'transparent',
+              backgroundClip: tintMode === 'tint' ? 'unset' : 'text',
+              textShadow: tintMode === 'tint'
+                ? '0 0 8px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.8)'
+                : '0 0 8px rgba(167,139,250,0.8), 0 0 16px rgba(103,232,249,0.4)',
+            }}
+          >æ</button>
           <button onClick={() => setShowTutorial(true)} className="p-1.5 rounded-full bg-black/50 border border-white/10 text-white/50 hover:text-violet-300 transition-colors backdrop-blur-sm" title="App guide">
             <HelpCircle className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={toggleTheme}
-            className="p-1.5 rounded-full bg-black/50 border border-white/10 text-white/50 hover:text-white transition-colors backdrop-blur-sm"
-            title={theme === 'aurora' ? 'Switch to Minimal theme' : 'Switch to Aurora theme'}
-          >
-            <Sparkles className="w-3.5 h-3.5" style={theme === 'aurora' ? { color: '#a78bfa' } : {}} />
           </button>
           <button onClick={() => fileRef.current?.click()} className="p-1.5 rounded-full bg-black/50 border border-white/10 text-white/50 hover:text-white transition-colors backdrop-blur-sm" title="Change photo">
             <ImageIcon className="w-3.5 h-3.5" />
@@ -231,7 +222,10 @@ export default function Home() {
         className="relative flex-1 flex flex-col items-center px-6 -mt-8 z-10"
       >
         {/* App title in aurora color */}
-        <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-2 text-center aurora-text">
+        <h1
+          className="text-4xl sm:text-5xl font-black tracking-tight mb-2 text-center aurora-text"
+          style={tintMode === 'tint' ? { background: 'none', WebkitBackgroundClip: 'unset', WebkitTextFillColor: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))', animation: 'none' } : undefined}
+        >
           MY Aespa Rank
         </h1>
         <style>{`
@@ -270,6 +264,7 @@ export default function Home() {
           <Link
             to={createPageUrl("Battle")}
             className="flex items-center justify-center gap-3 w-full py-5 rounded-2xl bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 text-white font-black text-base uppercase tracking-widest transition-all duration-300 shadow-[0_0_30px_rgba(139,92,246,0.4)] hover:shadow-[0_0_40px_rgba(139,92,246,0.6)]"
+            style={tintMode === 'tint' ? { background: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))', boxShadow: '0 0 30px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.4)' } : undefined}
           >
             <Swords className="w-6 h-6" />
             Start Ranking
@@ -399,7 +394,10 @@ export default function Home() {
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="text-white font-bold text-lg">{stat.value}</div>
-              <div className="aurora-text-sm text-[10px] uppercase tracking-widest mt-1">{stat.label}</div>
+              <div
+                className="aurora-text-sm text-[10px] uppercase tracking-widest mt-1"
+                style={tintMode === 'tint' ? { background: 'none', WebkitBackgroundClip: 'unset', WebkitTextFillColor: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))', animation: 'none' } : undefined}
+              >{stat.label}</div>
             </div>
           ))}
         </motion.div>

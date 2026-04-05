@@ -11,6 +11,7 @@ import AlbumFilter from "../components/ranking/AlbumFilter";
 import SongPreviewPlayer from "../components/ranking/SongPreviewPlayer";
 import { useSongs } from "../components/ranking/useSongs";
 import { getAlbumColor } from "../components/ranking/albumColors";
+import { useTintMode } from "../components/AlbumTintManager";
 
 const CUSTOM_SONGS_KEY = "aespa_custom_songs";
 import { checkAchievements } from "./Achievements";
@@ -71,6 +72,7 @@ function saveState(state) {
 
 export default function Battle() {
   const navigate = useNavigate();
+  const tintMode = useTintMode();
   const { songs: allDbSongs, loading: songsLoading } = useSongs();
   const rankAgainConfig0 = (() => { try { return JSON.parse(localStorage.getItem("aespa_rank_again") || "null"); } catch { return null; } })();
   const custom = (() => { try { return JSON.parse(localStorage.getItem(CUSTOM_SONGS_KEY) || "[]"); } catch { return []; } })();
@@ -362,6 +364,12 @@ export default function Battle() {
                       linear-gradient(135deg, #a78bfa, #67e8f9, #f0abfc, #34d399) border-box;
           box-shadow: 0 0 12px rgba(167,139,250,0.4), 0 0 24px rgba(103,232,249,0.2);
         }
+        ${tintMode === 'tint' ? `
+          .aurora-title { background: none !important; -webkit-background-clip: unset !important; background-clip: unset !important; -webkit-text-fill-color: rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)) !important; animation: none !important; }
+          .aurora-btn { border: 1.5px solid rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.5) !important; background: #000 !important; box-shadow: 0 0 8px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.15) !important; }
+          .aurora-btn:hover { box-shadow: 0 0 12px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.3) !important; }
+          .aurora-btn-active { border: 1.5px solid rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.8) !important; background: rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.15) !important; box-shadow: 0 0 12px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.3) !important; }
+        ` : ''}
       `}</style>
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

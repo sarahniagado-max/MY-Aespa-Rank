@@ -1,5 +1,3 @@
-const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -7,45 +5,79 @@ import { ArrowLeft, Smartphone, RotateCcw, MessageSquare, Droplets } from "lucid
 import { resetTutorial } from "../components/tutorial/AppTutorial";
 import AppTutorial from "../components/tutorial/AppTutorial";
 import { AnimatePresence } from "framer-motion";
-
-import { applyAlbumTint, clearAlbumTint } from "../components/AlbumTintManager";
+import { applyAlbumTint, clearAlbumTint, setTintMode, getTintBrightnessMode, setTintBrightnessMode } from "../components/AlbumTintManager";
+import { useSongs } from "../components/ranking/useSongs";
 
 const ALBUM_TINT_KEY = "aespa_album_tint_id";
 
+function getBrightestColor(lightstickColorStr) {
+  if (!lightstickColorStr) return null;
+  const colors = lightstickColorStr.split(",").map(c => c.trim()).filter(c => c.startsWith('#'));
+  if (colors.length === 0) return null;
+  let best = colors[0];
+  let bestLum = -1;
+  for (const hex of colors) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    if (isNaN(r) || isNaN(g) || isNaN(b)) continue;
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    if (lum > bestLum) { bestLum = lum; best = hex; }
+  }
+  return best;
+}
+
+function getColorForMode(album, mode) {
+  if (!album?.lightstick_color) return null;
+  if (mode === 'auto') return getBrightestColor(album.lightstick_color);
+  return album.lightstick_color.split(",")[0].trim();
+}
+
 export default function Settings() {
   const [showTutorial, setShowTutorial] = useState(false);
-  const [albums, setAlbums] = useState([]);
+  const { albums: dbAlbums } = useSongs();
   const [selectedTintAlbum, setSelectedTintAlbum] = useState(() => localStorage.getItem(ALBUM_TINT_KEY) || "");
-
-  useEffect(() => {
-    db.entities.Album.list("release_date", 100).then(a => setAlbums(a || [])).catch(() => {});
-  }, []);
+  const [brightnessMode, setBrightnessMode] = useState(() => getTintBrightnessMode());
 
   // Apply tint on mount from saved preference
   useEffect(() => {
-    if (selectedTintAlbum) {
-      const album = albums.find(a => a.id === selectedTintAlbum);
+    if (selectedTintAlbum && dbAlbums.length > 0) {
+      const album = dbAlbums.find(a => a.id === selectedTintAlbum);
       if (album?.lightstick_color) {
-        const firstColor = album.lightstick_color.split(",")[0].trim();
-        applyAlbumTint(firstColor);
+        const color = getColorForMode(album, brightnessMode);
+        if (color) applyAlbumTint(color, brightnessMode);
+        setTintMode('tint');
       }
     }
-  }, [albums, selectedTintAlbum]);
+  }, [dbAlbums, selectedTintAlbum]);
 
   const handleTintSelect = (albumId) => {
     if (albumId === selectedTintAlbum) {
-      // Deselect
       setSelectedTintAlbum("");
       localStorage.removeItem(ALBUM_TINT_KEY);
       clearAlbumTint();
+      setTintMode('aurora');
       return;
     }
     setSelectedTintAlbum(albumId);
     localStorage.setItem(ALBUM_TINT_KEY, albumId);
-    const album = albums.find(a => a.id === albumId);
+    const album = dbAlbums.find(a => a.id === albumId);
     if (album?.lightstick_color) {
-      const firstColor = album.lightstick_color.split(",")[0].trim();
-      applyAlbumTint(firstColor);
+      const color = getColorForMode(album, brightnessMode);
+      if (color) applyAlbumTint(color, brightnessMode);
+      setTintMode('tint');
+    }
+  };
+
+  const handleBrightnessMode = (mode) => {
+    setBrightnessMode(mode);
+    setTintBrightnessMode(mode);
+    if (selectedTintAlbum) {
+      const album = dbAlbums.find(a => a.id === selectedTintAlbum);
+      if (album?.lightstick_color) {
+        const color = getColorForMode(album, mode);
+        if (color) applyAlbumTint(color, mode);
+      }
     }
   };
 
@@ -53,6 +85,12 @@ export default function Settings() {
     resetTutorial();
     setShowTutorial(true);
   };
+
+  const BRIGHTNESS_OPTIONS = [
+    { id: 'normal', label: 'Normal', desc: 'First color as-is' },
+    { id: 'auto',   label: 'Auto',   desc: 'Brightest color' },
+    { id: 'boost',  label: 'Boost',  desc: '1.6× brighter' },
+  ];
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
@@ -151,11 +189,11 @@ export default function Settings() {
           <p className="text-white/40 text-xs mb-4 leading-relaxed">
             Select an album to apply a subtle color tint to the entire app background. Tap again to remove.
           </p>
-          {albums.length === 0 ? (
+          {dbAlbums.length === 0 ? (
             <p className="text-white/20 text-xs">Loading albums…</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {albums.filter(a => a.lightstick_color).map(album => {
+              {dbAlbums.filter(a => a.lightstick_color).map(album => {
                 const firstColor = album.lightstick_color.split(",")[0].trim();
                 const isSelected = selectedTintAlbum === album.id;
                 return (
@@ -180,9 +218,34 @@ export default function Settings() {
               })}
             </div>
           )}
+
+          {/* Brightness mode — only shown when an album is selected */}
+          {selectedTintAlbum && (
+            <div className="mt-4">
+              <p className="text-white/30 text-[10px] uppercase tracking-wider mb-2">Color brightness</p>
+              <div className="flex gap-2">
+                {BRIGHTNESS_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => handleBrightnessMode(opt.id)}
+                    className="flex-1 flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wide transition-all"
+                    style={{
+                      borderColor: brightnessMode === opt.id ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.08)',
+                      backgroundColor: brightnessMode === opt.id ? 'rgba(167,139,250,0.12)' : 'transparent',
+                      color: brightnessMode === opt.id ? 'rgba(167,139,250,1)' : 'rgba(255,255,255,0.35)',
+                    }}
+                  >
+                    <span>{opt.label}</span>
+                    <span className="text-[9px] font-normal normal-case tracking-normal opacity-60">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {selectedTintAlbum && (
             <button
-              onClick={() => { setSelectedTintAlbum(""); localStorage.removeItem(ALBUM_TINT_KEY); clearAlbumTint(); }}
+              onClick={() => { setSelectedTintAlbum(""); localStorage.removeItem(ALBUM_TINT_KEY); clearAlbumTint(); setTintMode('aurora'); }}
               className="mt-3 text-white/25 text-[11px] underline underline-offset-2 hover:text-white/50 transition-colors"
             >
               Remove tint

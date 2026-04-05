@@ -8,11 +8,13 @@ import AlbumFilter from "../components/ranking/AlbumFilter";
 import SongPreviewPlayer from "../components/ranking/SongPreviewPlayer";
 import CompareSlideshow from "../components/ranking/CompareSlideshow";
 import MiniAnalysis from "../components/ranking/MiniAnalysis";
+import { useTintMode } from "../components/AlbumTintManager";
 
 const COMPLETE_KEY = "aespa_ranking_complete";
 const ALL_RANKINGS_KEY = "aespa_all_rankings";
 
 export default function Results() {
+  const tintMode = useTintMode();
   const [rankingData, setRankingData] = useState(null);
   const [filterAlbum, setFilterAlbum] = useState("all");
   const [allRankings, setAllRankings] = useState([]);
@@ -144,12 +146,19 @@ export default function Results() {
         <Link to={createPageUrl("Home")} className="p-2 -ml-2 text-white/40 hover:text-white transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <h1 className="aurora-results font-bold text-xs tracking-wider">MY Aespa Rank</h1>
+        <h1
+          className="aurora-results font-bold text-xs tracking-wider"
+          style={tintMode === 'tint' ? { background: 'none', WebkitBackgroundClip: 'unset', WebkitTextFillColor: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))', animation: 'none' } : undefined}
+        >MY Aespa Rank</h1>
         <style>{`
           .aurora-results,.aurora-eq { background: linear-gradient(135deg, #a78bfa, #67e8f9, #f0abfc, #34d399, #818cf8); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: aurora-shift 4s ease infinite; }
           @keyframes aurora-shift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
           @keyframes aurora-pulse { 0%,100%{box-shadow:0 0 0 2px rgba(167,139,250,0.6),0 0 0 5px rgba(103,232,249,0.25),0 0 30px rgba(167,139,250,0.3)} 50%{box-shadow:0 0 0 2px rgba(103,232,249,0.7),0 0 0 6px rgba(240,171,252,0.3),0 0 40px rgba(103,232,249,0.4)} }
           .aurora-ring-1 { animation: aurora-pulse 3s ease-in-out infinite; border: 2px solid transparent; background-clip: padding-box; outline: 2px solid transparent; }
+          ${tintMode === 'tint' ? `
+            .aurora-results,.aurora-eq { background: none !important; -webkit-background-clip: unset !important; background-clip: unset !important; -webkit-text-fill-color: rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)) !important; animation: none !important; }
+            .aurora-ring-1 { animation: none !important; box-shadow: 0 0 0 2px rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)), 0 0 20px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.3) !important; }
+          ` : ''}
         `}</style>
         <div className="w-9" />
       </div>
@@ -181,7 +190,10 @@ export default function Results() {
             {/* Hero - #1 Song */}
             {topSong && (
               <div className="relative z-10 px-6 pt-2 pb-4 text-center">
-                <p className="aurora-results font-black text-4xl mb-1">#1</p>
+                <p
+                  className="aurora-results font-black text-4xl mb-1"
+                  style={tintMode === 'tint' ? { background: 'none', WebkitBackgroundClip: 'unset', WebkitTextFillColor: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))', animation: 'none' } : undefined}
+                >#1</p>
                 <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-semibold mb-3">
                   {tiedAtOne.length > 1 ? `${tiedAtOne.length}-Way Tie for #1` : "Your #1 Song"}
                 </p>

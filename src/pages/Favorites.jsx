@@ -9,6 +9,7 @@ import CoverImg from "../components/ranking/CoverImg";
 import SongPreviewPlayer from "../components/ranking/SongPreviewPlayer";
 import { getAlbumColor } from "../components/ranking/albumColors";
 import { getBattleResults } from "../components/battleStats";
+import { useTintMode } from "../components/AlbumTintManager";
 import { Star } from "lucide-react";
 
 const TYPE_LABELS = {
@@ -37,12 +38,14 @@ function WinRate({ title }) {
 }
 
 function FavSongRow({ song, albumCoverMap, lightstickColorMap, onUnfavorite }) {
+  const tintMode = useTintMode();
   const ac = getAlbumColor(song.album);
   const lightstick = lightstickColorMap[song.album];
-  const borderColor = lightstick ? `${lightstick}55` : `rgba(${ac.rgb}, 0.3)`;
+  const tintRgb = 'var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)';
+  const borderColor = tintMode === 'tint' ? `rgba(${tintRgb},0.33)` : (lightstick ? `${lightstick}55` : `rgba(${ac.rgb}, 0.3)`);
   const bgColor = lightstick ? `${lightstick}0a` : `rgba(${ac.rgb}, 0.06)`;
-  const hoverBorderColor = lightstick ? `${lightstick}99` : `rgba(${ac.rgb}, 0.6)`;
-  const hoverGlow = lightstick ? `0 0 10px ${lightstick}30` : `0 0 8px rgba(${ac.rgb}, 0.2)`;
+  const hoverBorderColor = tintMode === 'tint' ? `rgba(${tintRgb},0.6)` : (lightstick ? `${lightstick}99` : `rgba(${ac.rgb}, 0.6)`);
+  const hoverGlow = tintMode === 'tint' ? `0 0 10px rgba(${tintRgb},0.19)` : (lightstick ? `0 0 10px ${lightstick}30` : `0 0 8px rgba(${ac.rgb}, 0.2)`);
 
   const [personalEntry] = useState(() => getPersonalEntry(song.title));
   const [hovered, setHovered] = useState(false);

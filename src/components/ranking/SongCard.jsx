@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import CoverImg from "./CoverImg";
 import { getBattleResults } from "../battleStats";
 import { hexToRgb } from "./colorUtils";
+import { useTintMode } from '../AlbumTintManager';
 
 export default function SongCard({ song, onClick, side, tied = false, winRateOverride, onHoldConfirm }) {
   const [holdProgress, setHoldProgress] = useState(0);
@@ -63,6 +64,7 @@ export default function SongCard({ song, onClick, side, tied = false, winRateOve
     purple: "bg-purple-500/20 text-purple-300 border-purple-500/30",
   };
 
+  const tintMode = useTintMode();
   const c = song.song_color || song.lightstick_color || "#a78bfa";
 
   // Win rate — use override (snapshot) if provided, else live
@@ -76,16 +78,18 @@ export default function SongCard({ song, onClick, side, tied = false, winRateOve
   })();
 
   const rbgVals = Object.values(hexToRgb(c)).join(',');
+  const tintRgb = 'var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)';
+  const effectiveRgb = tintMode === 'tint' ? tintRgb : rbgVals;
 
   // Directional border: bright on the outer side only (left card = bright left border, right card = bright right border)
   // On hover: full bright border all around
-  const outerBorderColor = tied ? "rgba(167,139,250,0.6)" : `rgba(${rbgVals},0.75)`;
-  const dimBorderColor = tied ? "rgba(167,139,250,0.15)" : `rgba(${rbgVals},0.18)`;
+  const outerBorderColor = tied ? "rgba(167,139,250,0.6)" : `rgba(${effectiveRgb},0.75)`;
+  const dimBorderColor = tied ? "rgba(167,139,250,0.15)" : `rgba(${effectiveRgb},0.18)`;
   const sideGlow = tied
     ? { boxShadow: "0 0 20px rgba(167,139,250,0.2)" }
     : isLeft
-      ? { boxShadow: `-8px 0 24px rgba(${rbgVals},0.45), 0 0 10px rgba(${rbgVals},0.15)` }
-      : { boxShadow: `8px 0 24px rgba(${rbgVals},0.45), 0 0 10px rgba(${rbgVals},0.15)` };
+      ? { boxShadow: `-8px 0 24px rgba(${effectiveRgb},0.45), 0 0 10px rgba(${effectiveRgb},0.15)` }
+      : { boxShadow: `8px 0 24px rgba(${effectiveRgb},0.45), 0 0 10px rgba(${effectiveRgb},0.15)` };
 
   const cardStyle = tied
     ? { borderColor: "rgba(167,139,250,0.6)", ...sideGlow }
@@ -106,8 +110,8 @@ export default function SongCard({ song, onClick, side, tied = false, winRateOve
         };
 
   const hoverAnim = isLeft
-    ? { scale: 1.02, boxShadow: `-12px 0 32px rgba(${rbgVals},0.6), 0 0 16px rgba(${rbgVals},0.3)`, borderColor: outerBorderColor }
-    : { scale: 1.02, boxShadow: `12px 0 32px rgba(${rbgVals},0.6), 0 0 16px rgba(${rbgVals},0.3)`, borderColor: outerBorderColor };
+    ? { scale: 1.02, boxShadow: `-12px 0 32px rgba(${effectiveRgb},0.6), 0 0 16px rgba(${effectiveRgb},0.3)`, borderColor: outerBorderColor }
+    : { scale: 1.02, boxShadow: `12px 0 32px rgba(${effectiveRgb},0.6), 0 0 16px rgba(${effectiveRgb},0.3)`, borderColor: outerBorderColor };
 
   return (
     <motion.div
@@ -168,7 +172,7 @@ export default function SongCard({ song, onClick, side, tied = false, winRateOve
           className={`relative mt-1 px-5 py-2 rounded-full border overflow-hidden transition-all duration-300 ${
             onHoldConfirm && !tied ? 'cursor-pointer select-none' : ''
           } ${tied ? "bg-violet-500/20 border-violet-400/50" : "border-white/10 bg-white/5"}`}
-          style={!tied ? { borderColor: `${c}40` } : {}}
+          style={!tied ? { borderColor: tintMode === 'tint' ? `rgba(${tintRgb},0.25)` : `${c}40` } : {}}
           onMouseDown={onHoldConfirm && !tied ? startHold : undefined}
           onMouseUp={onHoldConfirm ? cancelHold : undefined}
           onMouseLeave={onHoldConfirm ? cancelHold : undefined}

@@ -5,11 +5,13 @@ import { ArrowLeft, BarChart3, Play, Zap, Clock, Trophy } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { getAllPlayCounts } from "../components/ranking/SongPreviewPlayer";
 import { getDecisionTimes } from "../components/battleStats";
+import { useTintMode } from "../components/AlbumTintManager";
 
 const COMPLETE_KEY = "aespa_ranking_complete";
 const ALL_RANKINGS_KEY = "aespa_all_rankings";
 
 export default function Stats() {
+  const tintMode = useTintMode();
   const rankingData = (() => { try { return JSON.parse(localStorage.getItem(COMPLETE_KEY) || "null"); } catch { return null; } })();
   const allRankings = (() => { try { return JSON.parse(localStorage.getItem(ALL_RANKINGS_KEY) || "[]"); } catch { return []; } })();
   const playCounts = getAllPlayCounts();
@@ -76,7 +78,10 @@ export default function Stats() {
         <Link to={createPageUrl("Home")} className="p-2 -ml-2 text-white/40 hover:text-white transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <h1 className="aurora-stat font-bold text-sm tracking-wider">STATS</h1>
+        <h1
+          className="aurora-stat font-bold text-sm tracking-wider"
+          style={tintMode === 'tint' ? { background: 'none', WebkitBackgroundClip: 'unset', WebkitTextFillColor: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))', animation: 'none' } : undefined}
+        >STATS</h1>
         <div className="w-9" />
       </div>
 

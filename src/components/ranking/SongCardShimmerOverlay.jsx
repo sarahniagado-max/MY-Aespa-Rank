@@ -1,10 +1,19 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
+import { useTintMode } from '../AlbumTintManager';
 
 // Shimmer overlay — position is driven by useSongCardShimmers hook via data-shimmer-inner
 export default function SongCardShimmerOverlay({ songColor, opacity = 0.25 }) {
-  // Always render — use white as fallback so even colorless cards sweep
-  const m = songColor ? songColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/) : null;
-  const [r, g, b] = m ? [m[1], m[2], m[3]] : ['255', '255', '255'];
+  const tintMode = useTintMode();
+
+  let r, g, b;
+  if (tintMode === 'tint') {
+    r = 'var(--album-bg-r)';
+    g = 'var(--album-bg-g)';
+    b = 'var(--album-bg-b)';
+  } else {
+    const m = songColor ? songColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/) : null;
+    [r, g, b] = m ? [m[1], m[2], m[3]] : ['255', '255', '255'];
+  }
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>

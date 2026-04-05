@@ -1,13 +1,14 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Sparkles } from "lucide-react";
-import { useTheme } from "./useTheme";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { useTintMode } from "./AlbumTintManager";
 
 export default function NavBar() {
-  const { theme, toggle } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
+  const tintMode = useTintMode();
 
-  // Hide on home page since it has its own header with the toggle
+  // Hide on home page since it has its own header, and on RankingReveal
   if (location.pathname === "/" || location.pathname === "/Home" || location.pathname === "/RankingReveal") return null;
 
   return (
@@ -16,15 +17,20 @@ export default function NavBar() {
         æspa
       </Link>
       <button
-        onClick={toggle}
-        title={theme === "aurora" ? "Switch to Minimal mode" : "Switch to Aurora mode"}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-[10px] font-semibold uppercase tracking-wider"
+        onClick={() => navigate(createPageUrl('Settings'))}
+        className="font-bold leading-none"
+        style={{
+          fontSize: '16px',
+          background: tintMode === 'tint' ? 'none' : 'linear-gradient(135deg, #a78bfa, #67e8f9)',
+          WebkitBackgroundClip: tintMode === 'tint' ? 'unset' : 'text',
+          WebkitTextFillColor: tintMode === 'tint' ? 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))' : 'transparent',
+          backgroundClip: tintMode === 'tint' ? 'unset' : 'text',
+          textShadow: tintMode === 'tint'
+            ? '0 0 8px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.8)'
+            : '0 0 8px rgba(167,139,250,0.8), 0 0 16px rgba(103,232,249,0.4)',
+        }}
       >
-        <Sparkles
-          className="w-3 h-3"
-          style={theme === "aurora" ? { color: "#a78bfa" } : { color: "rgba(255,255,255,0.3)" }}
-        />
-        <span className="text-white/40">{theme === "aurora" ? "Aurora" : "Minimal"}</span>
+        æ
       </button>
     </div>
   );

@@ -4,6 +4,7 @@ import { createPageUrl } from "@/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Crown, SkipForward } from "lucide-react";
 import { stopAllPreviews } from "../components/ranking/SongPreviewPlayer";
+import { useTintMode } from "../components/AlbumTintManager";
 
 const COMPLETE_KEY = "aespa_ranking_complete";
 
@@ -64,6 +65,7 @@ function buildYtSrc(song) {
 
 // ── Timer bar ────────────────────────────────────────────────────
 function TimerBar({ duration, active, resetKey }) {
+  const tintMode = useTintMode();
   const [progress, setProgress] = useState(0);
   const startRef = useRef(null);
   const rafRef = useRef(null);
@@ -90,7 +92,9 @@ function TimerBar({ duration, active, resetKey }) {
           width: "100%",
           transform: `scaleX(${1 - progress})`,
           transformOrigin: "right",
-          background: "linear-gradient(90deg, #a78bfa, #67e8f9, #f0abfc)",
+          background: tintMode === 'tint'
+            ? 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))'
+            : "linear-gradient(90deg, #a78bfa, #67e8f9, #f0abfc)",
         }}
       />
     </div>
@@ -99,6 +103,7 @@ function TimerBar({ duration, active, resetKey }) {
 
 // ── Full-screen song slide ────────────────────────────────────────
 function SongSlide({ song, rank, isTop1, visible }) {
+  const tintMode = useTintMode();
   return (
     <AnimatePresence>
       {visible && (
@@ -115,6 +120,10 @@ function SongSlide({ song, rank, isTop1, visible }) {
             @keyframes aurora-shift-rv { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
             .aurora-ring-rv { box-shadow: 0 0 0 3px rgba(167,139,250,0.7), 0 0 50px rgba(167,139,250,0.4); animation: aurora-pulse-rv 3s ease-in-out infinite; }
             @keyframes aurora-pulse-rv { 0%,100%{box-shadow:0 0 0 3px rgba(167,139,250,0.7),0 0 50px rgba(167,139,250,0.4)} 50%{box-shadow:0 0 0 3px rgba(103,232,249,0.8),0 0 60px rgba(103,232,249,0.5)} }
+            ${tintMode === 'tint' ? `
+              .aurora-text-rv { background: none !important; -webkit-background-clip: unset !important; background-clip: unset !important; -webkit-text-fill-color: rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)) !important; animation: none !important; }
+              .aurora-ring-rv { animation: none !important; box-shadow: 0 0 0 3px rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)), 0 0 40px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.4) !important; }
+            ` : ''}
           `}</style>
 
           {/* Background blurred cover */}
@@ -167,6 +176,7 @@ function SongSlide({ song, rank, isTop1, visible }) {
 
 // ── Tie group slide (all cards visible simultaneously, revealed one by one) ──
 function TieSlide({ group, rank, isTop1, revealedCount, visible }) {
+  const tintMode = useTintMode();
   return (
     <AnimatePresence>
       {visible && (
@@ -183,6 +193,10 @@ function TieSlide({ group, rank, isTop1, revealedCount, visible }) {
             @keyframes aurora-shift-rv { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
             .aurora-ring-rv { animation: aurora-pulse-rv 3s ease-in-out infinite; }
             @keyframes aurora-pulse-rv { 0%,100%{box-shadow:0 0 0 3px rgba(167,139,250,0.7),0 0 40px rgba(167,139,250,0.4)} 50%{box-shadow:0 0 0 3px rgba(103,232,249,0.8),0 0 50px rgba(103,232,249,0.5)} }
+            ${tintMode === 'tint' ? `
+              .aurora-text-rv { background: none !important; -webkit-background-clip: unset !important; background-clip: unset !important; -webkit-text-fill-color: rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)) !important; animation: none !important; }
+              .aurora-ring-rv { animation: none !important; box-shadow: 0 0 0 3px rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)), 0 0 30px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.4) !important; }
+            ` : ''}
           `}</style>
 
           {/* Background from first revealed song */}
@@ -270,6 +284,7 @@ function TieSlide({ group, rank, isTop1, revealedCount, visible }) {
 // ── Main component ────────────────────────────────────────────────
 export default function RankingReveal() {
   const navigate = useNavigate();
+  const tintMode = useTintMode();
   const [rankingData, setRankingData] = useState(null);
   const [started, setStarted] = useState(false);
   const [showNamePopup, setShowNamePopup] = useState(false);
@@ -491,6 +506,9 @@ export default function RankingReveal() {
       <style>{`
         .aurora-text-rv { background: linear-gradient(135deg, #a78bfa, #67e8f9, #f0abfc, #34d399, #818cf8); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: aurora-shift-rv 4s ease infinite; }
         @keyframes aurora-shift-rv { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        ${tintMode === 'tint' ? `
+          .aurora-text-rv { background: none !important; -webkit-background-clip: unset !important; background-clip: unset !important; -webkit-text-fill-color: rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)) !important; animation: none !important; }
+        ` : ''}
       `}</style>
 
       {/* Timer bar — only during reveal */}

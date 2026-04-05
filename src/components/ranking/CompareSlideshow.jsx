@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTintMode } from "../AlbumTintManager";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, TrendingUp, TrendingDown, Minus, PlusCircle, MinusCircle, ChevronLeft, ChevronRight, Link2 } from "lucide-react";
 import { getAlbumColor } from "./albumColors";
@@ -86,6 +87,7 @@ const SECTIONS = [
 ];
 
 export default function CompareSlideshow({ currentRankings, prevRanking, onClose }) {
+  const tintMode = useTintMode();
   const [slide, setSlide] = useState(0);
 
   const changeSlide = (n) => {
@@ -117,7 +119,10 @@ export default function CompareSlideshow({ currentRankings, prevRanking, onClose
           <X className="w-5 h-5" />
         </button>
         <div className="text-center">
-          <p className="aurora-compare font-black text-sm tracking-wider">RANKING COMPARISON</p>
+          <p
+            className="aurora-compare font-black text-sm tracking-wider"
+            style={tintMode === 'tint' ? { background: 'none', WebkitBackgroundClip: 'unset', WebkitTextFillColor: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))', animation: 'none' } : undefined}
+          >RANKING COMPARISON</p>
           <p className="text-white/30 text-[10px] mt-0.5">vs {new Date(prevRanking.completedAt).toLocaleDateString()}</p>
         </div>
         <div className="w-9" />

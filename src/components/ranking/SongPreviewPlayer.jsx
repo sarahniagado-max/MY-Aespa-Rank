@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Play, Square } from "lucide-react";
 import { extractYtId } from "./useSongs";
+import { useTintMode } from '../AlbumTintManager';
 
 // Global audio state — only one preview plays at a time
 let currentStopFn = null;
@@ -35,14 +36,14 @@ export default function SongPreviewPlayer({
   lightstickColor,
   songColor,
 }) {
+  const tintMode = useTintMode();
+
   const colorArray = React.useMemo(() => {
     const raw = lightstickColor || songData?.lightstick_color || null;
     if (!raw) return null;
     const arr = raw.split(',').map(c => c.trim()).filter(c => /^#[0-9A-Fa-f]{6}$/.test(c));
     return arr.length > 0 ? arr : null;
   }, [lightstickColor, songData?.lightstick_color]);
-
-  const sweepColor = '#a78bfa';
 
   // Base color for the pill (first album color or songColor)
   const lsColor = songColor || (colorArray ? colorArray[0] : null) || null;
@@ -56,7 +57,13 @@ export default function SongPreviewPlayer({
     return null;
   }, [lsColor]);
 
-  const rgba = (a) => rgbStr ? `rgba(${rgbStr},${a})` : `rgba(167,139,250,${a})`;
+  const effectiveRgb = tintMode === 'tint'
+    ? 'var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)'
+    : rgbStr;
+  const rgba = (a) => effectiveRgb ? `rgba(${effectiveRgb},${a})` : `rgba(167,139,250,${a})`;
+  const sweepColor = tintMode === 'tint'
+    ? 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))'
+    : '#a78bfa';
 
   const safeId = React.useMemo(() => songTitle.replace(/[^a-zA-Z0-9]/g, '_'), [songTitle]);
 

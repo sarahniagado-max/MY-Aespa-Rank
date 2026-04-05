@@ -1,7 +1,9 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTintMode } from "../AlbumTintManager";
 
 export default function ConfirmDeleteModal({ open, title = "Are you sure?", message = "This action cannot be undone.", onConfirm, onCancel }) {
+  const tintMode = useTintMode();
   return (
     <AnimatePresence>
       {open && (
@@ -31,7 +33,9 @@ export default function ConfirmDeleteModal({ open, title = "Are you sure?", mess
               <button
                 onClick={onConfirm}
                 className="flex-1 py-3 rounded-xl font-semibold text-sm text-white"
-                style={{
+                style={tintMode === 'tint' ? {
+                  background: "rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))",
+                } : {
                   background: "linear-gradient(135deg, #a78bfa, #67e8f9, #f0abfc, #34d399)",
                   backgroundSize: "300% 300%",
                   animation: "aurora-del 4s ease infinite",

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { useTintMode } from '../AlbumTintManager';
 
 /**
  * Applies a parallelogram wave shimmer across multiple song cards
@@ -14,21 +15,20 @@ export function useSongCardShimmers() {
     const cards = containerRef.current.querySelectorAll('[data-song-shimmer]');
     if (cards.length === 0) return;
 
-    let frameCount = 0;
     const animationDuration = 2.6; // 2.6s per sweep
     const cardOffset = 0.6; // 0.6s between each card
 
     const animate = () => {
       const now = Date.now() / 1000; // seconds
-      
+
       cards.forEach((card, idx) => {
         const startDelay = idx * cardOffset;
         const cardTime = (now + startDelay) % animationDuration;
         const progress = cardTime / animationDuration; // 0-1
-        
+
         // Shimmer travels left to right: -100% to 100%
         const shimmerX = progress * 200 - 100;
-        
+
         const shimmer = card.querySelector('[data-shimmer-element]');
         if (shimmer) {
           // Translate and skew for parallelogram effect
@@ -60,16 +60,19 @@ function calculateShimmerOpacity(progress) {
 }
 
 export function SongCardShimmerOverlay({ lightstickColor }) {
+  const tintMode = useTintMode();
+
+  const background = tintMode === 'tint'
+    ? `linear-gradient(90deg, transparent, rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.13), rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.08), transparent)`
+    : (lightstickColor
+        ? `linear-gradient(90deg, transparent, rgba(${hexToRgb(lightstickColor)}, 0.13), rgba(${hexToRgb(lightstickColor)}, 0.08), transparent)`
+        : 'none');
+
   return (
     <div
       data-shimmer-element
       className="absolute inset-0 pointer-events-none"
-      style={{
-        background: lightstickColor
-          ? `linear-gradient(90deg, transparent, rgba(${hexToRgb(lightstickColor)}, 0.13), rgba(${hexToRgb(lightstickColor)}, 0.08), transparent)`
-          : 'none',
-        width: '30%',
-      }}
+      style={{ background, width: '30%' }}
     />
   );
 }

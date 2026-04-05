@@ -117,7 +117,8 @@ export default function MoodBattlePhase({
   const [seenIds, setSeenIds] = useState(new Set(initSeenIds));
   const [winnerIds, setWinnerIds] = useState(new Set(initWinnerIds));
   const [pair, setPair] = useState(() => {
-if (initCurrentPair.length === 2) {
+    const winnerSet = new Set(initWinnerIds);
+    if (initCurrentPair.length === 2 && (phase !== 2 || (winnerSet.has(initCurrentPair[0]) && winnerSet.has(initCurrentPair[1])))) {
       const a = songs.find(s => s.id === initCurrentPair[0]);
       const b = songs.find(s => s.id === initCurrentPair[1]);
       if (a && b) return [a, b];
@@ -142,10 +143,17 @@ if (initCurrentPair.length === 2) {
   const [phase1DoneModal, setPhase1DoneModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const battleStart = useRef(Date.now());
-  const initNextPairSongs = initNextPair.length === 2
-    ? [songs.find(s => s.id === initNextPair[0]), songs.find(s => s.id === initNextPair[1])].filter(Boolean)
-    : null;
-  const savedNextPairRef = useRef(initNextPairSongs?.length === 2 ? initNextPairSongs : null);
+  const initNextPairSongs = (() => {
+    if (initNextPair.length !== 2) return null;
+    if (phase === 2) {
+      const winnerSet = new Set(initWinnerIds);
+      if (!winnerSet.has(initNextPair[0]) || !winnerSet.has(initNextPair[1])) return null;
+    }
+    const a = songs.find(s => s.id === initNextPair[0]);
+    const b = songs.find(s => s.id === initNextPair[1]);
+    return a && b ? [a, b] : null;
+  })();
+  const savedNextPairRef = useRef(initNextPairSongs);
 
   // Odd-song lone wolf screen (phase 1 only)
   const [loneSong, setLoneSong] = useState(null);
@@ -179,6 +187,10 @@ if (initCurrentPair.length === 2) {
       if (allSeen) setPhase1DoneModal(true);
     }
   }, []); // eslint-disable-line
+
+  useEffect(() => {
+    if (phase1DoneModal) onSave({ phase: 2, phase1_winners: JSON.stringify([...winnerIds]), battles_completed: 0 });
+  }, [phase1DoneModal]);
 
   const [showLastBanner, setShowLastBanner] = useState(false);
   const lastBattleShownRef = useRef(false);
@@ -680,9 +692,8 @@ if (initCurrentPair.length === 2) {
       <AnimatePresence>
         {phase1DoneModal && (() => {
           // All eliminated = songs NOT in winnerIds (lost battles) + those eliminated via "None of These"
-          const allEliminatedIds = songs
-            .filter(s => !winnerIds.has(s.id))
-            .map(s => s.id);
+          const allEliminatedIds = [...seenIds]
+            .filter(id => !winnerIds.has(id));
           return (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -723,14 +734,15 @@ if (initCurrentPair.length === 2) {
                     {allEliminatedIds.map(id => {
                       const s = songs.find(x => x.id === id);
                       if (!s) return null;
-                      const isNoneOfThese = eliminatedIds.has(id);
                       return (
                         <div key={s.id} className="flex items-center gap-3 px-3 py-2 rounded-xl border border-white/15 bg-white/[0.04]">
                           <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-white/5">
                             <CoverImg src={s.cover_url} alt="" className="w-full h-full object-cover" fallbackClass="w-full h-full bg-white/10" fallbackContent="" />
                           </div>
                           <p className="text-white/60 text-xs font-semibold truncate flex-1">{s.title}</p>
-                          <span className="text-white/30 text-[10px]">{isNoneOfThese ? "skipped" : "✕"}</span>
+                          <svg className="w-3 h-3 text-violet-400/60 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2a9 9 0 0 0-9 9c0 3.25 1.73 6.1 4.32 7.68V21a1 1 0 0 0 1 1h7.36a1 1 0 0 0 1-1v-2.32A9 9 0 0 0 21 11a9 9 0 0 0-9-9zm-2 16v-1h4v1h-4zm4.93-3.22-.93.6-.93-.6A7 7 0 1 1 14.93 14.78zM10 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm4 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
+                          </svg>
                         </div>
                       );
                     })}

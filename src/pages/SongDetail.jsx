@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTintMode } from "../components/AlbumTintManager";
 import { motion } from "framer-motion";
 import { ArrowLeft, Heart, Star, Clock, Zap, Info } from "lucide-react";
 import { useSongs } from "../components/ranking/useSongs";
@@ -28,6 +29,7 @@ export default function SongDetail() {
   const [tempScore, setTempScore] = useState("");
   const [tempNotes, setTempNotes] = useState("");
 
+  const tintMode = useTintMode();
   const rankingData = (() => { try { return JSON.parse(localStorage.getItem(COMPLETE_KEY) || "null"); } catch { return null; } })();
   const rankEntry = rankingData?.rankings?.find(r => r.song?.title === title);
   const rank = rankEntry ? (rankingData.rankings.indexOf(rankEntry) + 1) : null;
@@ -109,7 +111,9 @@ export default function SongDetail() {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="relative w-40 h-40 rounded-2xl overflow-hidden shadow-2xl mb-4"
-            style={song.lightstick_color ? { boxShadow: `0 0 30px ${song.lightstick_color}55` } : {}}
+            style={{ boxShadow: tintMode === 'tint'
+              ? `0 0 30px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.33)`
+              : (song.lightstick_color ? `0 0 30px ${song.lightstick_color}55` : 'none') }}
           >
             {song.cover_url ? (
               <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTintMode } from "../AlbumTintManager";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, ChevronLeft } from "lucide-react";
 
@@ -103,6 +104,7 @@ const STEPS = [
 ];
 
 export default function AppTutorial({ onClose }) {
+  const tintMode = useTintMode();
   const [step, setStep] = useState(0);
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
@@ -140,6 +142,10 @@ export default function AppTutorial({ onClose }) {
                       linear-gradient(135deg, #a78bfa, #67e8f9, #f0abfc, #34d399) border-box;
           box-shadow: 0 0 12px rgba(167,139,250,0.4), 0 0 24px rgba(103,232,249,0.2);
         }
+        ${tintMode === 'tint' ? `
+          .aurora-tut { background: none !important; -webkit-background-clip: unset !important; background-clip: unset !important; -webkit-text-fill-color: rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)) !important; animation: none !important; }
+          .aurora-btn-tut { border: 1.5px solid rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.8) !important; background: rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.15) !important; box-shadow: 0 0 12px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.3) !important; }
+        ` : ''}
       `}</style>
 
       <motion.div
@@ -159,9 +165,9 @@ export default function AppTutorial({ onClose }) {
               style={{
                 width: i === step ? 20 : 6,
                 background: i === step
-                  ? "linear-gradient(135deg, #a78bfa, #67e8f9)"
+                  ? (tintMode === 'tint' ? 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))' : "linear-gradient(135deg, #a78bfa, #67e8f9)")
                   : i < step
-                    ? "rgba(167,139,250,0.4)"
+                    ? (tintMode === 'tint' ? 'rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.4)' : "rgba(167,139,250,0.4)")
                     : "rgba(255,255,255,0.1)",
               }}
             />

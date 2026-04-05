@@ -3,7 +3,7 @@ import db from "../api/base44Client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Plus, X, Zap, BarChart2, Trophy, BookOpen, Trash2, HelpCircle, Pencil, ImageIcon } from "lucide-react";
+import { ArrowLeft, Plus, X, Zap, Trophy, BookOpen, Trash2, HelpCircle, Pencil, ImageIcon } from "lucide-react";
 import MoodWalkthrough from "../components/MoodWalkthrough";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -55,6 +55,7 @@ export default function MoodRanking() {
   const [imageUploadRankingId, setImageUploadRankingId] = useState(null);
   const moodCoverFileRef = useRef(null);
   const [revealData, setRevealData] = useState(null); // { eloRatings, eliminatedIds, mood }
+  const [showEliminatedFor, setShowEliminatedFor] = useState(null); // mood id
   const [userEmail, setUserEmail] = useState(null);
   const [showWalkthrough, setShowWalkthrough] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -69,7 +70,7 @@ export default function MoodRanking() {
   };
 
   useEffect(() => {
-    db.auth.me().then(u => setUserEmail(u?.email)).catch(() => {});
+    setUserEmail(null);
   }, []);
 
   const { data: dbRankings = [] } = useQuery({
@@ -349,19 +350,6 @@ export default function MoodRanking() {
                           <X className="w-3.5 h-3.5" />
                         </button>
                       )}
-                      {phase === 2 && battles > 0 && (
-                        <button
-                          onClick={() => {
-                            setActiveMoodId(mood.id);
-                            setRevealData({ eloRatings: eloMap, eliminatedIds: parseJson(ranking?.phase1_eliminated, []), mood });
-                            setView("reveal");
-                          }}
-                          className="p-1 text-white/20 hover:text-white/60 transition-colors"
-                          title="View ranking"
-                        >
-                          <Trophy className="w-3.5 h-3.5" />
-                        </button>
-                      )}
                     </div>
                   </div>
 
@@ -402,21 +390,18 @@ export default function MoodRanking() {
                       style={{ backgroundColor: `${mood.color}22`, border: `1.5px solid ${mood.color}55`, color: mood.color }}
                     >
                       <Zap className="w-3.5 h-3.5 inline mr-1.5" />
-                      {phase === 2 ? "Continue Phase 2" : seenCount === 0 ? "Start Phase 1" : seenCount >= totalCount ? "Continue Phase 1" : "Continue Phase 1"}
+                      {phase === 2 ? (battles === 0 ? "Start Phase 2" : "Continue Phase 2") : seenCount === 0 ? "Start Phase 1" : "Continue Phase 1"}
                     </button>
-                    {/* View Results button — only if Phase 2 has battles */}
-                    {phase === 2 && battles > 0 && (
+                    {phase === 2 && (
                       <button
-                        onClick={() => {
-                          setActiveMoodId(mood.id);
-                          setRevealData({ eloRatings: eloMap, eliminatedIds: parseJson(ranking?.phase1_eliminated, []), mood, skipIntro: true });
-                          setView("reveal");
-                        }}
+                        onClick={() => setShowEliminatedFor(mood.id)}
                         className="px-3 py-2.5 rounded-xl border font-bold text-xs uppercase tracking-widest transition-all"
                         style={{ borderColor: `${mood.color}40`, color: `${mood.color}99` }}
-                        title="View Results"
+                        title="View eliminated songs"
                       >
-                        <BarChart2 className="w-4 h-4" />
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2a9 9 0 0 0-9 9c0 3.25 1.73 6.1 4.32 7.68V21a1 1 0 0 0 1 1h7.36a1 1 0 0 0 1-1v-2.32A9 9 0 0 0 21 11a9 9 0 0 0-9-9zm-2 16v-1h4v1h-4zm4.93-3.22-.93.6-.93-.6A7 7 0 1 1 14.93 14.78zM10 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm4 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
+                        </svg>
                       </button>
                     )}
                   </div>
@@ -426,6 +411,59 @@ export default function MoodRanking() {
           })}
         </div>
       )}
+
+      {showEliminatedFor && (() => {
+        const elRanking = getRanking(showEliminatedFor);
+        const elMood = moodList.find(m => m.id === showEliminatedFor);
+        const elSeenIds = parseJson(elRanking?.phase1_seen_songs, []);
+        const elWinnerSet = new Set(parseJson(elRanking?.phase1_winners, []));
+        const elSongIds = elSeenIds.filter(id => !elWinnerSet.has(id));
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowEliminatedFor(null)}>
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div
+              className="relative w-full max-w-sm bg-[#0e0e0e] border border-white/12 rounded-2xl flex flex-col max-h-[80vh]"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+                <h2 className="text-white font-black text-sm uppercase tracking-widest">
+                  {elMood?.name} · Eliminated
+                </h2>
+                <button
+                  onClick={() => setShowEliminatedFor(null)}
+                  className="w-7 h-7 flex items-center justify-center rounded-full bg-white/8 hover:bg-white/15 text-white/60 hover:text-white transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="overflow-y-auto px-5 pb-5">
+                {elSongIds.length === 0 ? (
+                  <p className="text-white/30 text-sm">No eliminated songs.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {elSongIds.map((id, i) => {
+                      const s = songs.find(x => x.id === id);
+                      if (!s) return null;
+                      return (
+                        <div key={id} className="flex items-center gap-3 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03]">
+                          <span className="text-white/20 text-[10px] font-mono shrink-0">#{i + 1}</span>
+                          <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0 bg-white/5">
+                            <CoverImg src={s.cover_url} alt="" className="w-full h-full object-cover" fallbackClass="w-full h-full bg-white/10" fallbackContent="" />
+                          </div>
+                          <p className="text-white/60 text-xs font-semibold truncate flex-1">{s.title}</p>
+                          <svg className="w-3 h-3 text-violet-400/60 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2a9 9 0 0 0-9 9c0 3.25 1.73 6.1 4.32 7.68V21a1 1 0 0 0 1 1h7.36a1 1 0 0 0 1-1v-2.32A9 9 0 0 0 21 11a9 9 0 0 0-9-9zm-2 16v-1h4v1h-4zm4.93-3.22-.93.6-.93-.6A7 7 0 1 1 14.93 14.78zM10 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm4 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" />
+                          </svg>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {tab === "saved" && (
         <div className="relative z-10 px-4 pb-24 space-y-3">

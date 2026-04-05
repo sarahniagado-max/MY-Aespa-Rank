@@ -1,12 +1,12 @@
-const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
-
 import React, { useState, useEffect } from "react";
-import { getTintMode, TINT_MODE_KEY, applyAlbumTint } from "./components/AlbumTintManager";
+import { getTintMode, TINT_MODE_KEY, applyAlbumTint, getTintBrightnessMode } from "./components/AlbumTintManager";
 import NavBar from "./components/NavBar";
 
 import { useLocation } from "react-router-dom";
 
 const ALBUM_TINT_KEY = "aespa_album_tint_id";
+const SUPABASE_URL = 'https://pgeobkizrwysefxehves.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnZW9ia2l6cnd5c2VmeGVodmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MjkwMDEsImV4cCI6MjA4OTUwNTAwMX0.zVZpftZ2ifyFcC73yT6aYS4ZdpzpKyzgrLWCUVytV-Q';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -19,17 +19,26 @@ export default function Layout({ children }) {
     return () => window.removeEventListener('albumTintModeChange', handleChange);
   }, []);
 
+  useEffect(() => {
+    document.body.classList.toggle('album-tint', tintMode === 'tint');
+  }, [tintMode]);
+
   // Apply saved album tint on app load
   useEffect(() => {
     const savedAlbumId = localStorage.getItem(ALBUM_TINT_KEY);
     if (!savedAlbumId) return;
-    db.entities.Album.list("release_date", 100).then(albums => {
-      const album = (albums || []).find(a => a.id === savedAlbumId);
-      if (album?.lightstick_color) {
-        const firstColor = album.lightstick_color.split(",")[0].trim();
-        applyAlbumTint(firstColor);
-      }
-    }).catch(() => {});
+    fetch(`${SUPABASE_URL}/rest/v1/albums?id=eq.${savedAlbumId}&select=lightstick_color`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    })
+      .then(r => r.json())
+      .then(rows => {
+        const color = rows?.[0]?.lightstick_color;
+        if (color) {
+          const firstColor = color.split(',')[0].trim();
+          applyAlbumTint(firstColor, getTintBrightnessMode());
+        }
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -37,7 +46,7 @@ export default function Layout({ children }) {
       className="min-h-screen bg-black pt-[0px]"
       style={{
         backgroundColor: tintMode === 'tint'
-          ? `rgba(var(--album-bg-r, 0), var(--album-bg-g, 0), var(--album-bg-b, 0), 0.04)`
+          ? `rgba(var(--album-bg-r, 0), var(--album-bg-g, 0), var(--album-bg-b, 0), 0.20)`
           : undefined,
         transition: 'background-color 1s ease',
       }}

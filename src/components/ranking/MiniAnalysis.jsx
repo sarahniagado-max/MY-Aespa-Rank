@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTintMode } from "../AlbumTintManager";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, TrendingUp, TrendingDown, Minus, Crown, Zap, BarChart3 } from "lucide-react";
 
@@ -64,6 +65,7 @@ function buildAnalysis(allRankings) {
 }
 
 export default function MiniAnalysis({ allRankings, onClose }) {
+  const tintMode = useTintMode();
   const [tab, setTab] = useState("overview");
   const analysis = buildAnalysis(allRankings);
 
@@ -100,7 +102,10 @@ export default function MiniAnalysis({ allRankings, onClose }) {
         {/* Header */}
         <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
           <div>
-            <h2 className="aurora-analysis font-black text-base tracking-wide">Ranking Analysis</h2>
+            <h2
+            className="aurora-analysis font-black text-base tracking-wide"
+            style={tintMode === 'tint' ? { background: 'none', WebkitBackgroundClip: 'unset', WebkitTextFillColor: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))', animation: 'none' } : undefined}
+          >Ranking Analysis</h2>
             <p className="text-white/30 text-xs mt-0.5">Based on {totalRankings} rankings</p>
           </div>
           <button onClick={onClose} className="text-white/30 hover:text-white transition-colors p-1">

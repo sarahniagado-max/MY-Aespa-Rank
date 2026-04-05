@@ -3,16 +3,19 @@ import { motion } from "framer-motion";
 import { Crown, Star, Award } from "lucide-react";
 import { getAlbumColor } from "./albumColors";
 import { hexToRgb } from "./colorUtils";
+import { useTintMode } from '../AlbumTintManager';
 
 export default function RankingItem({ song, rank, eloRating, index }) {
   const isFirst = rank === 1;
   const isTop5 = rank <= 5;
   const isTop10 = rank <= 10;
+  const tintMode = useTintMode();
   const albumColor = getAlbumColor(song?.album);
   const songColor = song?.song_color || null;
-  const borderRgb = (songColor && typeof songColor === 'string' && songColor.startsWith('#'))
+  const rawBorderRgb = (songColor && typeof songColor === 'string' && songColor.startsWith('#'))
     ? Object.values(hexToRgb(songColor)).join(',')
     : albumColor.rgb;
+  const borderRgb = tintMode === 'tint' ? 'var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)' : rawBorderRgb;
 
   const getBadge = () => {
     if (isFirst) return <Crown className="w-5 h-5 text-violet-400" />;
@@ -52,11 +55,17 @@ export default function RankingItem({ song, rank, eloRating, index }) {
 
       {/* Rank number */}
       <div className="w-10 text-center shrink-0">
-        <span className={getRankStyle()}>{rank}</span>
+        <span
+          className={getRankStyle()}
+          style={isFirst && tintMode === 'tint' ? { background: 'none', WebkitBackgroundClip: 'unset', WebkitTextFillColor: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))', animation: 'none' } : undefined}
+        >{rank}</span>
       </div>
 
       {/* Album cover */}
-      <div className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 shadow-lg ${isFirst ? "aurora-ring-item" : ""}`}>
+      <div
+        className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 shadow-lg ${isFirst ? "aurora-ring-item" : ""}`}
+        style={isFirst && tintMode === 'tint' ? { boxShadow: '0 0 0 2px rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)), 0 0 20px rgba(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b),0.3)' } : undefined}
+      >
         <img src={song?.cover_url} alt={song?.album} className="w-full h-full object-cover" />
       </div>
 

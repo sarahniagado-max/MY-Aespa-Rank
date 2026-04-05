@@ -1,5 +1,3 @@
-const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
-
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -11,7 +9,7 @@ import { getSongOrder } from "../components/ranking/aespaSongs";
 import { useSongs } from "../components/ranking/useSongs";
 import SongPreviewPlayer from "../components/ranking/SongPreviewPlayer";
 import { getAlbumColor } from "../components/ranking/albumColors";
-import { applyAlbumTint, clearAlbumTint, getTintMode, TINT_MODE_KEY } from "../components/AlbumTintManager";
+import { applyAlbumTint, clearAlbumTint, useTintMode, getTintBrightnessMode } from "../components/AlbumTintManager";
 import AddSongModal from "../components/ranking/AddSongModal";
 import EditSongModal from "../components/ranking/EditSongModal";
 import ConfirmDeleteModal from "../components/ranking/ConfirmDeleteModal";
@@ -116,21 +114,12 @@ export default function Songs() {
   const [user, setUser] = useState(null);
   const [isChecking, setIsChecking] = useState(true);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
-  const [tintMode] = useState(() => getTintMode());
+  const tintMode = useTintMode();
   const { songs: dbSongs, albums: dbAlbums, loading: songsLoading } = useSongs();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const u = await db.auth.me();
-        setUser(u);
-      } catch (e) {
-        setUser(null);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-    checkAuth();
+    setUser(null);
+    setIsChecking(false);
   }, []);
 
   // Album cover lookup: name → cover_url
@@ -246,21 +235,20 @@ export default function Songs() {
 
   // IntersectionObserver: tint background based on which album section is in view
   useEffect(() => {
-    if (tintMode !== 'tint') return;
     const observers = [];
     const sectionEls = document.querySelectorAll('[data-album-lightstick]');
     sectionEls.forEach(el => {
       const color = el.getAttribute('data-album-lightstick');
       const obs = new IntersectionObserver(
         entries => {
-          if (entries[0].isIntersecting) applyAlbumTint(color);
+          if (entries[0].isIntersecting && tintMode !== 'tint') applyAlbumTint(color, getTintBrightnessMode());
         },
         { threshold: 0.15, rootMargin: '-80px 0px -60% 0px' }
       );
       obs.observe(el);
       observers.push(obs);
     });
-    return () => { observers.forEach(o => o.disconnect()); clearAlbumTint(); };
+    return () => { observers.forEach(o => o.disconnect()); if (tintMode !== 'tint') clearAlbumTint(); };
   // Re-run whenever filtered songs change so new section elements get observed
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered.length, tintMode]);
@@ -528,9 +516,11 @@ export default function Songs() {
                   {/* Tall vertical gradient line spanning all songs */}
                   <div style={{
                     width: '2px',
-                    background: colors && colors.length > 1
-                      ? `linear-gradient(to bottom, ${colors.join(', ')})`
-                      : colors && colors.length === 1 ? colors[0] : 'rgba(255,255,255,0.15)',
+                    background: tintMode === 'tint'
+                      ? 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))'
+                      : (colors && colors.length > 1
+                          ? `linear-gradient(to bottom, ${colors.join(', ')})`
+                          : colors && colors.length === 1 ? colors[0] : 'rgba(255,255,255,0.15)'),
                     borderRadius: '1px',
                     flexShrink: 0,
                   }} />
@@ -577,6 +567,7 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
   const memberStyle = song.member ? MEMBER_STYLES[song.member] : null;
   const ac = getAlbumColor(song.album);
   const cardColor = songColor || null;
+  const tintMode = useTintMode();
   const [isFav, setIsFav] = React.useState(() => isFavorite(song.title));
   const [showNotes, setShowNotes] = React.useState(false);
   const [personalEntry, setPersonalEntryState] = React.useState(() => getPersonalEntry(song.title));
@@ -621,10 +612,12 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
     return m ? `${m[1]},${m[2]},${m[3]}` : null;
   }, [nextSongColor]);
 
-  const cardStyle = rgbVals ? {
-    borderLeft: `2px solid rgba(${rgbVals}, 0.8)`,
+  const tintRgb = 'var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)';
+  const activeRgb = tintMode === 'tint' ? tintRgb : rgbVals;
+  const cardStyle = activeRgb ? {
+    borderLeft: `2px solid rgba(${activeRgb}, 0.8)`,
     background: '#080808',
-    boxShadow: isHovered ? `0 0 12px rgba(${rgbVals},0.5)` : 'none',
+    boxShadow: isHovered ? `0 0 12px rgba(${activeRgb},0.5)` : 'none',
     transition: '0.3s ease',
   } : {
     borderLeft: `2px solid rgba(255,255,255,0.3)`,
@@ -649,7 +642,11 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
             <CoverImg src={song.cover_url || albumCoverMap[song.album]} alt="" className="w-full h-full object-cover" fallbackClass="w-full h-full bg-white/10 flex items-center justify-center text-[8px] text-white/30" fallbackContent="?" />
           </div>
           <div className="min-w-0">
-            <Link to={titleUrl} className="text-white/90 text-sm truncate block font-medium hover:text-violet-300 transition-colors">
+            <Link
+              to={titleUrl}
+              className={`text-white/90 text-sm truncate block font-medium transition-colors ${tintMode !== 'tint' ? 'hover:text-violet-300' : ''}`}
+              style={tintMode === 'tint' ? { color: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))' } : undefined}
+            >
               {song.title}
             </Link>
             <div className="flex items-center gap-1.5 flex-wrap">
