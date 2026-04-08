@@ -67,7 +67,7 @@ export function useSongCardShimmers(depKey = '') {
           albumGroups.get(key).push(card);
         });
 
-        const SWEEP = 2600;   // ms for one card sweep
+        const SWEEP = 3400;   // ms for one card sweep
         const STAGGER = 600;  // ms between consecutive card starts
 
         albumOrder.forEach(key => {

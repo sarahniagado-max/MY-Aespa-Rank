@@ -27,30 +27,16 @@ function groupByTie(rankings) {
 function buildSequence(allGroups, limit) {
   // allGroups: highest→lowest (original order from groupByTie on sorted desc rankings)
   // We want to reveal lowest rank first → reverse
-  let filtered;
-  if (limit > 0) {
-    let count = 0;
-    filtered = [];
-    for (const g of [...allGroups]) {
-      filtered.push(g);
-      count += g.length;
-      if (count >= limit) break;
-    }
-  } else {
-    filtered = allGroups;
-  }
+  // limit = number of unique rank positions (groups), not number of songs
+  const filtered = limit > 0 ? allGroups.slice(0, limit) : allGroups;
   // index 0 = lowest rank group, last = #1
   return [...filtered].reverse();
 }
 
 function computeRank(groups, groupIdx) {
-  // groups[0] = lowest rank
-  const reversedIndex = groups.length - 1 - groupIdx;
-  let rank = 1;
-  for (let i = 0; i < reversedIndex; i++) {
-    rank += groups[groups.length - 1 - i].length;
-  }
-  return rank;
+  // groups[0] = lowest rank, groups[last] = #1
+  // rank = positional order (dense): groups above this one + 1
+  return groups.length - groupIdx;
 }
 
 // ── Audio helpers ────────────────────────────────────────────────
@@ -254,9 +240,8 @@ function TieSlide({ group, rank, isTop1, revealedCount, visible }) {
                     <p
                       className="text-center font-bold text-sm leading-tight"
                       style={{
-                        color: revealed ? "white" : "transparent",
-                        textShadow: revealed ? "none" : "0 0 8px rgba(255,255,255,0.3)",
-                        transition: "color 0.6s ease, text-shadow 0.6s ease",
+                        visibility: revealed ? "visible" : "hidden",
+                        color: "white",
                         maxWidth: "100%",
                         overflow: "hidden",
                         display: "-webkit-box",
@@ -266,9 +251,12 @@ function TieSlide({ group, rank, isTop1, revealedCount, visible }) {
                     >
                       {song?.title}
                     </p>
-                    {revealed && (
-                      <p className="text-white/40 text-[10px] mt-0.5 text-center truncate w-full">{song?.album}</p>
-                    )}
+                    <p
+                      className="text-white/40 text-[10px] mt-0.5 text-center truncate w-full"
+                      style={{ visibility: revealed ? "visible" : "hidden" }}
+                    >
+                      {song?.album}
+                    </p>
                   </motion.div>
                 );
               })}
@@ -293,6 +281,7 @@ export default function RankingReveal() {
   // Sequence: flat list of { group, rank, tieCardIndex (for tie groups) }
   // We build a flat step sequence where each step is one "screen moment"
   const [sequence, setSequence] = useState([]); // array of { groupIdx, tieCardIdx, group, rank }
+  const [numPositions, setNumPositions] = useState(0); // unique rank positions in reveal
   const [seqIdx, setSeqIdx] = useState(0);
   const [visible, setVisible] = useState(true);
   const [done, setDone] = useState(false);
@@ -333,6 +322,7 @@ export default function RankingReveal() {
       }
     });
     setSequence(seq);
+    setNumPositions(groups.length);
     sequenceRef.current = seq;
   }, [rankingData]);
 
@@ -519,7 +509,7 @@ export default function RankingReveal() {
       {/* Reveal counter — top left */}
       {started && !done && (
         <div className="fixed top-4 left-4 z-50 text-[11px] font-bold uppercase tracking-wider text-white/30">
-          TOP {sequence.length} REVEAL · {seqIdx + 1}/{sequence.length}
+          TOP {numPositions} REVEAL · {(currentStep?.groupIdx ?? 0) + 1}/{numPositions}
         </div>
       )}
 
