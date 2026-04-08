@@ -44,9 +44,39 @@ function parseColors(lightstick_color) {
   const arr = lightstick_color.split(',').map(c => c.trim()).filter(c => /^#[0-9A-Fa-f]{6}$/.test(c));
   return arr.length > 0 ? arr : null;
 }
+// Returns the nth-brightest color (n=0 brightest) from a comma-separated hex string as "r,g,b"
+function getSortedBrightestRgb(lightstickColor, n = 0) {
+  if (!lightstickColor) return null;
+  const cs = lightstickColor.split(',').map(c => c.trim()).filter(c => /^#[0-9A-Fa-f]{6}$/.test(c));
+  if (cs.length === 0) return null;
+  const lumOf = h => 0.299*parseInt(h.slice(1,3),16) + 0.587*parseInt(h.slice(3,5),16) + 0.114*parseInt(h.slice(5,7),16);
+  const sorted = [...cs].sort((a, b) => lumOf(b) - lumOf(a));
+  const hex = sorted[Math.min(n, sorted.length - 1)];
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+function getBrightestLightstickRgb(lightstickColor) {
+  if (!lightstickColor) return null;
+  const cs = lightstickColor.split(',').map(c => c.trim()).filter(c => /^#[0-9A-Fa-f]{6}$/.test(c));
+  if (cs.length === 0) return null;
+  let best = cs[0], bestLum = -1;
+  for (const hex of cs) {
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    if (isNaN(r)||isNaN(g)||isNaN(b)) continue;
+    const lum = 0.299*r + 0.587*g + 0.114*b;
+    if (lum > bestLum) { bestLum = lum; best = hex; }
+  }
+  const r = parseInt(best.slice(1,3),16), g = parseInt(best.slice(3,5),16), b = parseInt(best.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
 // ─────────────────────────────────────────────────────────────────
 
 const CUSTOM_SONGS_KEY = "aespa_custom_songs";
+
+// Songs whose OST/Collab type badge and label are suppressed (subtitle lines carry that info instead)
+const OST_BADGE_SUPPRESS = new Set(["We Go", "Die Trying", "ZOOM ZOOM", "Dark Arts", "Keychain", "Attitude"]);
+const KEEP_ACTIVE_RGB_TITLES = new Set(['ZOOM ZOOM', 'Hot Mess', 'Forever']);
+const MEMBER_SUBTITLE_COLORS = { Karina: '147,197,253', Giselle: '249,168,212', Winter: '252,165,165', Ningning: '196,181,253' };
 
 // Hardcoded fallbacks for albums that may have DB read issues
 const LIGHTSTICK_FALLBACKS = {
@@ -103,6 +133,81 @@ function AuroraDate({ date }) {
     return <span className="aurora-date text-[11px] font-semibold">{format(d, "MMM d, yyyy")}</span>;
   } catch { return <span className="aurora-date text-[11px] font-semibold">{date}</span>; }
 }
+
+// ── Search helpers ────────────────────────────────────────────────
+function normalizeSearch(str) {
+  return str.toLowerCase().replace(/æ/g, 'ae');
+}
+
+function tokenMatchPriority(token, titleNorm) {
+  if (titleNorm === token) return 0;          // exact
+  if (titleNorm.startsWith(token)) return 1;  // prefix
+  return Infinity;
+}
+
+function songTypeSortKey(type) {
+  if (type === 'title_track') return 0;
+  if (type === 'b_side') return 1;
+  return 2;
+}
+
+function rankSearch(query, songs) {
+  const tokens = normalizeSearch(query).trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return songs;
+  const scored = [];
+  for (const song of songs) {
+    const tl = normalizeSearch(song.title);
+    let maxPri = 0;
+    let allMatch = true;
+    for (const token of tokens) {
+      const p = tokenMatchPriority(token, tl);
+      if (p === Infinity) { allMatch = false; break; }
+      if (p > maxPri) maxPri = p;
+    }
+    if (!allMatch) continue;
+    scored.push({ song, priority: maxPri });
+  }
+  scored.sort((a, b) => {
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    const ta = songTypeSortKey(a.song.song_type);
+    const tb = songTypeSortKey(b.song.song_type);
+    if (ta !== tb) return ta - tb;
+    return a.song.title.localeCompare(b.song.title);
+  });
+  return scored.slice(0, 8).map(s => s.song);
+}
+
+function highlightSegments(title, query) {
+  const tokens = normalizeSearch(query).trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return [{ text: title, hl: false }];
+  const norm = normalizeSearch(title);
+  const ranges = [];
+  for (const token of tokens) {
+    let idx = norm.indexOf(token);
+    while (idx !== -1) {
+      ranges.push([idx, idx + token.length]);
+      idx = norm.indexOf(token, idx + 1);
+    }
+  }
+  if (ranges.length === 0) return [{ text: title, hl: false }];
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged = [[...ranges[0]]];
+  for (let i = 1; i < ranges.length; i++) {
+    const last = merged[merged.length - 1];
+    if (ranges[i][0] <= last[1]) last[1] = Math.max(last[1], ranges[i][1]);
+    else merged.push([...ranges[i]]);
+  }
+  const segs = [];
+  let pos = 0;
+  for (const [s, e] of merged) {
+    if (pos < s) segs.push({ text: title.slice(pos, s), hl: false });
+    segs.push({ text: title.slice(s, e), hl: true });
+    pos = e;
+  }
+  if (pos < title.length) segs.push({ text: title.slice(pos), hl: false });
+  return segs;
+}
+// ─────────────────────────────────────────────────────────────────
 
 export default function Songs() {
   const [search, setSearch] = useState("");
@@ -186,18 +291,19 @@ export default function Songs() {
     setEditingSong(null);
   };
 
-  const filtered = React.useMemo(() => allSongs.filter(song => {
-    const matchSearch = song.title.toLowerCase().includes(search.toLowerCase()) ||
-      (song.album || '').toLowerCase().includes(search.toLowerCase());
-    let matchTab = true;
-    if (activeTab === "Title Tracks") matchTab = song.song_type === "title_track";
-    else if (activeTab === "B-sides") matchTab = song.song_type === "b_side";
-    else if (activeTab === "Solos") matchTab = song.song_type === "solo";
-    else if (activeTab === "Singles") matchTab = ["single", "pre_release"].includes(song.song_type);
-    else if (activeTab === "Collabs & OSTs") matchTab = ["collaboration", "ost"].includes(song.song_type);
-    else if (activeTab === "Covers / Unreleased") matchTab = song.song_type === "cover" || song.song_type === "unreleased";
-    return matchSearch && matchTab;
-  }), [allSongs, activeTab, search]);
+  const filtered = React.useMemo(() => {
+    const tabFiltered = allSongs.filter(song => {
+      if (activeTab === "Title Tracks") return song.song_type === "title_track";
+      if (activeTab === "B-sides") return song.song_type === "b_side";
+      if (activeTab === "Solos") return song.song_type === "solo";
+      if (activeTab === "Singles") return ["single", "pre_release"].includes(song.song_type);
+      if (activeTab === "Collabs & OSTs") return ["collaboration", "ost"].includes(song.song_type);
+      if (activeTab === "Covers / Unreleased") return song.song_type === "cover" || song.song_type === "unreleased";
+      return true;
+    });
+    if (!search.trim()) return tabFiltered;
+    return rankSearch(search, tabFiltered);
+  }, [allSongs, activeTab, search]);
 
   // Group by album name only — same album always in one section
   const { grouped, groupedOrder } = React.useMemo(() => {
@@ -440,7 +546,7 @@ export default function Songs() {
             const albumSongs = grouped[song.album] || [];
             const ls = lightstickColorMap[song.album];
             return (
-              <SongRow key={song.title} song={song} albumCoverMap={albumCoverMap} lightstickColor={ls} onDelete={song.isCustom ? handleDeleteCustomSong : null} onEdit={song.isCustom ? handleEditSong : null} />
+              <SongRow key={song.title} song={song} albumCoverMap={albumCoverMap} lightstickColor={ls} onDelete={song.isCustom ? handleDeleteCustomSong : null} onEdit={song.isCustom ? handleEditSong : null} highlightQuery={search} />
             );
           })}
         </div>
@@ -460,7 +566,7 @@ export default function Songs() {
                    {songs.map(song => {
                      const ls = song.lightstick_color || lightstickColorMap[song.album] || null;
                      return (
-                       <SongRow key={song.title} song={song} hideMember albumCoverMap={albumCoverMap} lightstickColor={ls} onEdit={song.isCustom ? handleEditSong : null} onDelete={song.isCustom ? handleDeleteCustomSong : null} />
+                       <SongRow key={song.title} song={song} hideMember albumCoverMap={albumCoverMap} lightstickColor={ls} onEdit={song.isCustom ? handleEditSong : null} onDelete={song.isCustom ? handleDeleteCustomSong : null} highlightQuery={search} />
                        );
                        })}
                        </div>
@@ -531,7 +637,7 @@ export default function Songs() {
                       const songColor = colors ? getSongColor(colors, songIdx, songs.length) : null;
                       const nextSongColor = colors && songIdx < songs.length - 1 ? getSongColor(colors, songIdx + 1, songs.length) : null;
                       return (
-                        <SongRow key={song.title} song={song} albumCoverMap={albumCoverMap} lightstickColor={lightstick} songColor={songColor} nextSongColor={nextSongColor} albumKey={key} shimmerOpacity={songIdx === 0 ? 0.5 : 0.25} onDelete={song.isCustom ? handleDeleteCustomSong : null} onEdit={song.isCustom ? handleEditSong : null} songIndex={songIdx} totalInAlbum={songs.length} />
+                        <SongRow key={song.title} song={song} albumCoverMap={albumCoverMap} lightstickColor={lightstick} songColor={songColor} nextSongColor={nextSongColor} albumKey={key} shimmerOpacity={songIdx === 0 ? 0.5 : 0.25} onDelete={song.isCustom ? handleDeleteCustomSong : null} onEdit={song.isCustom ? handleEditSong : null} songIndex={songIdx} totalInAlbum={songs.length} highlightQuery={search} />
                       );
                     })}
                   </div>
@@ -564,7 +670,7 @@ export default function Songs() {
   );
 }
 
-function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, albumCoverMap = {}, lightstickColor = null, songColor = null, nextSongColor = null, albumKey = '', shimmerOpacity = 0.25, songIndex, totalInAlbum }) {
+function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, albumCoverMap = {}, lightstickColor = null, songColor = null, nextSongColor = null, albumKey = '', shimmerOpacity = 0.25, songIndex, totalInAlbum, highlightQuery = "" }) {
   const memberStyle = song.member ? MEMBER_STYLES[song.member] : null;
   const ac = getAlbumColor(song.album);
   const cardColor = songColor || null;
@@ -576,6 +682,7 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
   const [tempScore, setTempScore] = React.useState("");
   const [tempNotes, setTempNotes] = React.useState("");
   const [isHovered, setIsHovered] = React.useState(false);
+  const subTextRef = React.useRef(null);
 
   // Win rate
   const battleResults = React.useMemo(() => getBattleResults(), []);
@@ -622,6 +729,50 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
 
   const tintRgb = 'var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)';
   const activeRgb = tintMode === 'tint' ? tintRgb : rgbVals;
+  const brightLightstickRgb = React.useMemo(() => getBrightestLightstickRgb(lightstickColor), [lightstickColor]);
+
+  // Fix 2+4: subtitle text with WTMW hardcode and member flag
+  const { subtitleText, subtitleIsMember } = React.useMemo(() => {
+    if (song.title === 'Welcome to MY World') return { subtitleText: 'ft. Naevis', subtitleIsMember: false };
+    const collab = song.collab_artist || song.collab_info || null;
+    const ost    = song.ost_source || null;
+    const notes  = song.notes || null;
+    if (collab && ost) return { subtitleText: `aespa & ${collab} · ${ost} OST`, subtitleIsMember: false };
+    if (collab)        return { subtitleText: `aespa & ${collab}`, subtitleIsMember: false };
+    if (ost)           return { subtitleText: `${ost} OST`, subtitleIsMember: false };
+    if (notes?.startsWith('Originally by')) return { subtitleText: `${notes} · Remake`, subtitleIsMember: false };
+    if (notes?.startsWith('ft.'))           return { subtitleText: notes, subtitleIsMember: false };
+    if (song.label && !OST_BADGE_SUPPRESS.has(song.title)) return { subtitleText: song.label, subtitleIsMember: false };
+    if (!hideMember && song.member) {
+      const ms = MEMBER_STYLES[song.member];
+      return { subtitleText: ms ? `${ms.emoji} ${song.member}` : song.member, subtitleIsMember: true };
+    }
+    return { subtitleText: null, subtitleIsMember: false };
+  }, [song, hideMember]);
+
+  // Fix 3+4: subtitle color — brightest lightstick, with exceptions
+  const subtitleColor = React.useMemo(() => {
+    if (tintMode === 'tint') return `rgba(${tintRgb},0.85)`;
+    if (subtitleIsMember && song.member) {
+      const mc = MEMBER_SUBTITLE_COLORS[song.member];
+      return mc ? `rgba(${mc},0.9)` : 'rgba(255,255,255,0.6)';
+    }
+    if (KEEP_ACTIVE_RGB_TITLES.has(song.title)) return activeRgb ? `rgba(${activeRgb},0.85)` : 'rgba(255,255,255,0.5)';
+    if (song.title === 'Welcome to MY World') {
+      const r = getSortedBrightestRgb(lightstickColor, 1);
+      return r ? `rgba(${r},0.85)` : 'rgba(255,255,255,0.5)';
+    }
+    return brightLightstickRgb ? `rgba(${brightLightstickRgb},0.85)` : (activeRgb ? `rgba(${activeRgb},0.85)` : 'rgba(255,255,255,0.5)');
+  }, [tintMode, subtitleIsMember, song.title, song.member, lightstickColor, activeRgb, brightLightstickRgb]);
+
+  // Fix 6: personal score/notes formatted as a subtitle line (always white)
+  const personalSubtitleText = React.useMemo(() => {
+    const parts = [];
+    if (personalEntry.score != null) parts.push(`★${personalEntry.score}/10`);
+    if (personalEntry.notes) parts.push(`"${personalEntry.notes}"`);
+    return parts.length > 0 ? parts.join(' · ') : null;
+  }, [personalEntry.score, personalEntry.notes]);
+
   const cardStyle = activeRgb ? {
     borderLeft: `2px solid rgba(${activeRgb}, 0.8)`,
     background: '#080808',
@@ -655,31 +806,60 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
               className={`text-white/90 text-sm truncate block font-medium transition-colors ${tintMode !== 'tint' ? 'hover:text-violet-300' : ''}`}
               style={tintMode === 'tint' ? { color: 'rgb(var(--album-bg-r),var(--album-bg-g),var(--album-bg-b))' } : undefined}
             >
-              {song.title}
+              {highlightQuery.trim()
+                ? highlightSegments(song.title, highlightQuery).map((seg, i) =>
+                    seg.hl
+                      ? <mark key={i} style={{ background: 'rgba(167,139,250,0.28)', color: 'inherit', borderRadius: '2px', padding: '0 1px' }}>{seg.text}</mark>
+                      : seg.text
+                  )
+                : song.title}
             </Link>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {song.collab_info && <span className="text-pink-400/70 text-[9px]">{song.collab_info}</span>}
-              {song.label && <span className="text-amber-400/80 text-[9px] font-bold">{song.label}</span>}
-              {song.song_type === "cover" && song.original_title && (
-                <span className="text-cyan-400/70 text-[9px]">Cover of {song.original_title}{song.original_artist ? ` by ${song.original_artist}` : ""}</span>
-              )}
-              {!hideMember && song.member && (
-                <span className={`text-[9px] font-semibold ${memberStyle ? memberStyle.color : "text-white/50"}`}
-                  style={song.member_color ? { color: song.member_color } : undefined}>
-                  {memberStyle?.emoji || "🎵"} {song.member}
-                </span>
-              )}
-              {song.isCustom && <span className="text-violet-400/60 text-[9px] font-bold">Custom</span>}
-              {personalEntry.score != null && (
-                <span className="text-yellow-400/80 text-[9px] font-bold flex items-center gap-0.5">
-                  <Star className="w-2.5 h-2.5 fill-current" />{personalEntry.score}/10
-                </span>
-              )}
-              {personalEntry.notes && (
-                <span className="text-white/30 text-[9px] italic truncate max-w-[80px]">"{personalEntry.notes}"</span>
-              )}
-
-            </div>
+            {/* Fixes 5+6: subtitle row only rendered when content exists; personal data acts as subtitle in white */}
+            {(subtitleText || personalSubtitleText) && (
+              <div style={{ height: '12px', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden' }}>
+                {subtitleText && (
+                  <span
+                    ref={subTextRef}
+                    style={{
+                      flex: '1 1 0',
+                      minWidth: 0,
+                      fontSize: '9px',
+                      lineHeight: '12px',
+                      fontWeight: 500,
+                      color: subtitleColor,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {subtitleText}
+                  </span>
+                )}
+                {personalSubtitleText && (
+                  <span style={{
+                    ...(subtitleText ? { flexShrink: 0, maxWidth: '72px' } : { flex: '1 1 0', minWidth: 0 }),
+                    fontSize: '9px',
+                    lineHeight: '12px',
+                    fontWeight: 500,
+                    color: 'rgba(255,255,255,0.8)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {personalSubtitleText}
+                  </span>
+                )}
+              </div>
+            )}
+            {/* Remaining badges: only cover info and custom tag */}
+            {((song.song_type === "cover" && song.original_title) || song.isCustom) && (
+              <div className="flex items-center gap-1.5 flex-wrap" style={{ marginTop: '1px' }}>
+                {song.song_type === "cover" && song.original_title && (
+                  <span className="text-cyan-400/70 text-[9px]">Cover of {song.original_title}{song.original_artist ? ` by ${song.original_artist}` : ""}</span>
+                )}
+                {song.isCustom && <span className="text-violet-400/60 text-[9px] font-bold">Custom</span>}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -690,9 +870,11 @@ function SongRow({ song, hideMember = false, onDelete = null, onEdit = null, alb
             <Star className="w-3.5 h-3.5" />
           </button>
           <SongPreviewPlayer songTitle={song.title} songData={song} compact songColor={cardColor} lightstickColor={lightstickColor} songIndex={songIndex} totalInAlbum={totalInAlbum} />
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${TYPE_COLORS[song.song_type] || "text-white/40 bg-white/5"}`}>
-            {TYPE_LABELS[song.song_type] || song.song_type}
-          </span>
+          {!OST_BADGE_SUPPRESS.has(song.title) && (
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${TYPE_COLORS[song.song_type] || "text-white/40 bg-white/5"}`}>
+              {TYPE_LABELS[song.song_type] || song.song_type}
+            </span>
+          )}
           {winRate !== null && (
             <span className="text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-white/8 border border-white/10">
               {winRate}%

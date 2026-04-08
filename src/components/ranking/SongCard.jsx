@@ -81,41 +81,38 @@ export default function SongCard({ song, onClick, side, tied = false, winRateOve
   const tintRgb = 'var(--album-bg-r),var(--album-bg-g),var(--album-bg-b)';
   const effectiveRgb = tintMode === 'tint' ? tintRgb : rbgVals;
 
-  // Directional border: bright on the outer side only (left card = bright left border, right card = bright right border)
-  // On hover: full bright border all around
-  const outerBorderColor = tied ? "rgba(167,139,250,0.6)" : `rgba(${effectiveRgb},0.75)`;
-  const dimBorderColor = tied ? "rgba(167,139,250,0.15)" : `rgba(${effectiveRgb},0.18)`;
-  const sideGlow = tied
-    ? { boxShadow: "0 0 20px rgba(167,139,250,0.2)" }
+  // Gradient border: single thick line, bright at active side, fading toward corners
+  // Implemented via outer gradient background + 3px padding (preserves border-radius)
+  const borderGradient = tied
+    ? `rgba(167,139,250,0.6)`
     : isLeft
-      ? { boxShadow: `-8px 0 24px rgba(${effectiveRgb},0.45), 0 0 10px rgba(${effectiveRgb},0.15)` }
-      : { boxShadow: `8px 0 24px rgba(${effectiveRgb},0.45), 0 0 10px rgba(${effectiveRgb},0.15)` };
+      ? `linear-gradient(to right, rgba(${effectiveRgb},0.9), rgba(${effectiveRgb},0.15))`
+      : `linear-gradient(to left,  rgba(${effectiveRgb},0.9), rgba(${effectiveRgb},0.15))`;
 
-  const cardStyle = tied
-    ? { borderColor: "rgba(167,139,250,0.6)", ...sideGlow }
+  const staticGlow = tied
+    ? `0 0 20px rgba(167,139,250,0.2)`
     : isLeft
-      ? {
-          borderTopColor: dimBorderColor,
-          borderBottomColor: dimBorderColor,
-          borderLeftColor: outerBorderColor,
-          borderRightColor: dimBorderColor,
-          ...sideGlow
-        }
-      : {
-          borderTopColor: dimBorderColor,
-          borderBottomColor: dimBorderColor,
-          borderLeftColor: dimBorderColor,
-          borderRightColor: outerBorderColor,
-          ...sideGlow
-        };
+      ? `-8px 0 24px rgba(${effectiveRgb},0.45), 0 0 10px rgba(${effectiveRgb},0.15)`
+      : `8px 0 24px rgba(${effectiveRgb},0.45), 0 0 10px rgba(${effectiveRgb},0.15)`;
 
-  const hoverAnim = isLeft
-    ? { scale: 1.02, boxShadow: `-12px 0 32px rgba(${effectiveRgb},0.6), 0 0 16px rgba(${effectiveRgb},0.3)`, borderColor: outerBorderColor }
-    : { scale: 1.02, boxShadow: `12px 0 32px rgba(${effectiveRgb},0.6), 0 0 16px rgba(${effectiveRgb},0.3)`, borderColor: outerBorderColor };
+  const cardStyle = {
+    padding: '3px',
+    borderRadius: '1rem',
+    background: borderGradient,
+    boxShadow: staticGlow,
+  };
+
+  // On hover: omnidirectional glow simulates full bright border all around
+  const hoverAnim = {
+    scale: 1.02,
+    boxShadow: tied
+      ? `0 0 28px rgba(167,139,250,0.45), 0 0 12px rgba(167,139,250,0.25)`
+      : `0 0 28px rgba(${effectiveRgb},0.55), 0 0 12px rgba(${effectiveRgb},0.3), ${staticGlow}`,
+  };
 
   return (
     <motion.div
-      className="relative w-full rounded-2xl border"
+      className="relative w-full rounded-2xl"
       style={cardStyle}
       whileTap={{ scale: 0.96 }}
       whileHover={hoverAnim}
@@ -125,7 +122,8 @@ export default function SongCard({ song, onClick, side, tied = false, winRateOve
     >
     <div
       onClick={onClick}
-      className={`relative w-full group rounded-2xl bg-gradient-to-b from-white/5 to-transparent backdrop-blur-sm ${(onClick || onHoldConfirm) ? 'cursor-pointer' : 'pointer-events-none'}`}
+      className={`relative w-full group rounded-[13px] bg-black/90 bg-gradient-to-b from-white/5 to-transparent ${(onClick || onHoldConfirm) ? 'cursor-pointer' : 'pointer-events-none'}`}
+      style={{ height: '100%' }}
     >
       <div className="relative p-4 flex flex-col items-center gap-3">
         {/* Album art */}
