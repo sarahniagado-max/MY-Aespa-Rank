@@ -70,7 +70,12 @@ export default function MoodRanking() {
   };
 
   useEffect(() => {
-    setUserEmail(null);
+    let uid = localStorage.getItem('aespa_user_id');
+    if (!uid) {
+      uid = crypto.randomUUID();
+      localStorage.setItem('aespa_user_id', uid);
+    }
+    setUserEmail(uid);
   }, []);
 
   const { data: dbRankings = [] } = useQuery({
