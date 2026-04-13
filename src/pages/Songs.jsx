@@ -136,12 +136,13 @@ function AuroraDate({ date }) {
 
 // ── Search helpers ────────────────────────────────────────────────
 function normalizeSearch(str) {
-  return str.toLowerCase().replace(/æ/g, 'ae');
+  return str.toLowerCase().replace(/æ/g, 'ae').replace(/[^\w\s]/g, '');
 }
 
-function tokenMatchPriority(token, titleNorm) {
-  if (titleNorm === token) return 0;          // exact
-  if (titleNorm.startsWith(token)) return 1;  // prefix
+function tokenMatchPriority(token, fieldNorm) {
+  if (fieldNorm === token) return 0;           // exact
+  if (fieldNorm.startsWith(token)) return 1;   // prefix
+  if (fieldNorm.includes(token)) return 2;     // substring
   return Infinity;
 }
 
@@ -156,11 +157,15 @@ function rankSearch(query, songs) {
   if (tokens.length === 0) return songs;
   const scored = [];
   for (const song of songs) {
-    const tl = normalizeSearch(song.title);
+    const fields = [
+      normalizeSearch(song.title),
+      normalizeSearch(song.artist || ''),
+      normalizeSearch(song.album || ''),
+    ];
     let maxPri = 0;
     let allMatch = true;
     for (const token of tokens) {
-      const p = tokenMatchPriority(token, tl);
+      const p = Math.min(...fields.map(f => tokenMatchPriority(token, f)));
       if (p === Infinity) { allMatch = false; break; }
       if (p > maxPri) maxPri = p;
     }
